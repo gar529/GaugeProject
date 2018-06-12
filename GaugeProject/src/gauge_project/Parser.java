@@ -31,42 +31,7 @@ public class Parser {
 	}
 	
 	
-	public class GaugeSummary{
-		
-		String url;
-		String name;
-		String id;
-		
-		public GaugeSummary(){
-			
-		}
-		
-		public GaugeSummary(String url, String name, String id){
-			
-			this.url = url;
-			this.name = name;
-			this.id = id;
-		}
-		
-		public String getUrl(){
-			return this.url;
-		}
-		public void setUrl(String url){
-			this.url = url;
-		}
-		public String getName(){
-			return this.name;
-		}
-		public void setName(String name){
-			this.name = name;
-		}
-		public String getId(){
-			return this.id;
-		}
-		public void setId(String id){
-			this.id = id;
-		}
-	}
+	
 	
 	
 	public List<GaugeSummary> getSummaryData(String content){
@@ -171,6 +136,9 @@ public class Parser {
 			}
 			
 			GaugeSummary summary = new GaugeSummary(url,name,id);
+			summary.setLatitude(1.1111);
+			summary.setLongitude(1.22222);
+			System.out.println("lat is " + summary.getLatitude() + "lon is" + summary.getLongitude());
 			summaryList.add(summary);
 			
 				
@@ -224,6 +192,9 @@ public class Parser {
 			}
 			
 			System.out.println("size of the parsed data list is:" + summaryList.size());
+			
+			LocationParser locParser = new LocationParser(summaryList);
+			locParser.runLocationParser();
 			
 			XMLGenerator xmlGen = new XMLGenerator(summaryList);
 			xmlGen.generateXML();

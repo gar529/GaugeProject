@@ -1,10 +1,11 @@
 package gauge_project;
 
-import gauge_project.Parser.GaugeSummary;
+
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.List;
 
 
@@ -28,15 +29,22 @@ public class XMLGenerator {
 		
 		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><data>";
 		
+		DecimalFormat format = new DecimalFormat("#");
+		format.setMinimumFractionDigits(6);
+		
 		for(int i=0; i<list.size();i++){
 						
 			GaugeSummary summary = list.get(i);
 			summary.setUrl(addExtension(summary.getUrl()));
 			summary.setName(addExtension(summary.getName()));
 			summary.setId(addExtension(summary.getId()));
+			summary.setLatitude(summary.getLatitude());
+			summary.setLongitude(summary.getLongitude());
 			xml = xml + "<gauge><url>" + list.get(i).getUrl() + "</url>" +
 					"<name>" + list.get(i).getName() + "</name>" +
-					"<id>" + list.get(i).getId() + "</id></gauge>";
+					"<id>" + list.get(i).getId() + "</id>" + 
+					"<lat>" + format.format(list.get(i).getLatitude()) + "</lat>" +
+					"<lon>" + format.format(list.get(i).getLongitude()) + "</lon></gauge>";
 		}
 		xml = xml+"</data>";
 		
