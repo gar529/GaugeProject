@@ -8,6 +8,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,13 +83,13 @@ public class WeatherXmlParser {
         return  gauges;
     }
 
-    public static class Gauge{
-        public String gaugeURL;
-        public String gaugeName;
-        public String gaugeID;
-        public double gaugeLatitude;
-        public double gaugeLongitude;
-        public double distance;
+    public static class Gauge implements Serializable{
+        private String gaugeURL;
+        private String gaugeName;
+        private String gaugeID;
+        private double gaugeLatitude;
+        private double gaugeLongitude;
+        private double distance;
 
         private Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
                       double gaugeLongitude){

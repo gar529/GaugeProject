@@ -2,6 +2,7 @@ package com.gregrussell.fenwickguageapp;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Location;
 import android.net.ConnectivityManager;
@@ -11,7 +12,9 @@ import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.webkit.WebView;
+import android.widget.Button;
 import android.widget.TextView;
 import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
 import org.xmlpull.v1.XmlPullParserException;
@@ -44,6 +47,7 @@ public class MainActivity extends Activity {
     // Whether the display should be refreshed.
     public static boolean refreshDisplay = true;
     public static String sPref = null;
+    Button button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +56,9 @@ public class MainActivity extends Activity {
 
 
 
+
         loadPage();
+
 
     }
 
@@ -226,10 +232,18 @@ public class MainActivity extends Activity {
         @Override
         protected void onPostExecute(List<Gauge> result){
 
+            Log.d("locations", "number of gauges within 5 miles: " + result.size());
             Log.d("locations", "locations that are within 5 miles: ");{
                 for(int i = 0; i<result.size();i++){
                     Log.d("locations", result.get(i).getGaugeName() + " " + result.get(i).getGaugeID());
                 }
+
+                ArrayList<Gauge> myList = new ArrayList<Gauge>();
+                myList.addAll(result);
+                Intent intent = new Intent(MainActivity.this,MainFragActivity.class);
+                intent.putExtra("LIST_OF_RESULTS", myList);
+                startActivity(intent);
+
             }
         }
 

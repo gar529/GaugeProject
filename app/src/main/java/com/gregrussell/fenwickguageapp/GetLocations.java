@@ -28,7 +28,7 @@ public class GetLocations {
 
         List<Gauge> closetGauges = new ArrayList<Gauge>();
 
-        Log.d("locations2", "list size " + gaugeList.size());
+        //Log.d("locations2", "list size " + gaugeList.size());
         if(gaugeList.size() > 0) {
             for (int i = 0; i < gaugeList.size(); i++) {
 
@@ -37,20 +37,17 @@ public class GetLocations {
                 gaugeLocation.setLatitude(currentGauge.getGaugeLatitude());
                 gaugeLocation.setLongitude(currentGauge.getGaugeLongitude());
                 double distanceAway = currentLocation.distanceTo(gaugeLocation) * MILE_CONVERTER;
-                Log.d("locations2", "distance " + currentLocation.distanceTo(gaugeLocation));
+                //Log.d("locations2", "distance " + currentLocation.distanceTo(gaugeLocation));
                 if (distanceAway  <= distance) {
                     currentGauge.setDistance(distanceAway);
                     closetGauges.add(currentGauge);
                 }
             }
         }
-        Log.d("locations", "unsorted locations that are within 5 miles: ");{
-            for(int i = 0; i<closetGauges.size();i++){
-                Log.d("locations", closetGauges.get(i).getGaugeName() + " " +
-                        closetGauges.get(i).getGaugeID() + " miles away: " +
-                        closetGauges.get(i).getDistance());
-            }
-        }
+        //Log.d("locations", "unsorted locations that are within 5 miles: ");
+
+
+
         Collections.sort(closetGauges, new Comparator<Gauge>() {
             @Override
             public int compare(Gauge o1, Gauge o2) {
@@ -66,13 +63,10 @@ public class GetLocations {
             }
         });
 
-        Log.d("locations", "sorted locations that are within 5 miles: ");{
-            for(int i = 0; i<closetGauges.size();i++){
-                Log.d("locations", closetGauges.get(i).getGaugeName() + " " +
-                        closetGauges.get(i).getGaugeID() + " miles away: " +
-                        closetGauges.get(i).getDistance());
-            }
-        }
+        //Log.d("locations", "sorted locations that are within 5 miles: ");
+
+
+
 
         return closetGauges;
     }
