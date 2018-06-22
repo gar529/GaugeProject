@@ -70,7 +70,7 @@ public class Parser {
 						System.out.println("start pos is: " + startPos);
 						data = content.substring(startPos, endPos);
 						System.out.println("data is: " + data);
-						test.add(data);
+						test.add(cleanData(data));
 						System.out.println("endPos is: " + endPos);
 						i = endPos + 1;
 					}
@@ -91,6 +91,42 @@ public class Parser {
 		
 		System.out.println("finished with test");
 		return test;
+	}
+	
+	private String cleanData(String data){
+		
+		String startTag = "<a";
+		String endTag = "</a>";
+		
+		String clean = null;
+		int i = 0;
+		int endPos = 0;
+		int startPos = 0;
+		startPos = data.indexOf(startTag,i);
+		if(startPos > -1){
+			endPos = data.indexOf(endTag,startPos)+5;
+			if (endPos == -1){
+				endPos = data.length()-1;
+				System.out.println("stuck 1");
+			}else{
+				if(data.substring(startPos, endPos).indexOf(startTag, 0) != -1){
+					
+					System.out.println("start pos is: " + startPos);
+					clean = data.substring(startPos, endPos-1);
+					System.out.println("data is: " + clean);
+					System.out.println("endPos is: " + endPos);
+					i = endPos + 1;
+				}
+				else{
+					i = endPos +1;
+					System.out.println("stuck 2");
+				}
+				System.out.println("stuck 3");
+				
+			}
+			System.out.println("stuck 4");
+		}
+		return clean;
 	}
 	
 	public void parseRawSummary(List<String> dataList){
@@ -118,17 +154,21 @@ public class Parser {
 				
 			//get name
 			if(data.indexOf(">",endPoint) > -1 ){
+				
 				startPoint = data.indexOf(">",endPoint) + 1;
-				endPoint = data.indexOf("(",startPoint);
+				endPoint = data.lastIndexOf("(",data.length())-1;
+				
 				name = data.substring(startPoint, endPoint);
+				
 			}else{
 				name = "name could not be found";
 			}
 			
 			//get id
 			if(data.indexOf("(", endPoint) > -1){
-				startPoint = endPoint + 1;
+				startPoint = data.lastIndexOf("(")+1;
 				endPoint = data.indexOf(")", startPoint);
+				System.out.println("end point is " + endPoint);
 				id = data.substring(startPoint,endPoint);
 				
 			}else{
