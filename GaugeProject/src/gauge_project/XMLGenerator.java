@@ -29,7 +29,7 @@ public class XMLGenerator {
 	public void generateXML(){
 		
 		
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><version>" + xmlVersion + "</version><data>";
+		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><data><version>" + xmlVersion + "</version>";
 		
 		DecimalFormat format = new DecimalFormat("#");
 		format.setMinimumFractionDigits(6);
