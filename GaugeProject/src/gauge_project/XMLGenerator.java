@@ -12,6 +12,7 @@ import java.util.List;
 
 public class XMLGenerator {
 	
+	private static int xmlVersion = 1;
 	List<GaugeSummary> list;
 
 	public XMLGenerator(){
@@ -27,7 +28,8 @@ public class XMLGenerator {
 	//file saved to *current workspace*/GaugeProject/xmlData.xml
 	public void generateXML(){
 		
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><data>";
+		
+		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><version>" + xmlVersion + "</version><data>";
 		
 		DecimalFormat format = new DecimalFormat("#");
 		format.setMinimumFractionDigits(6);
