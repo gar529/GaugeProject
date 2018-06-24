@@ -68,12 +68,12 @@ public class WeatherXmlParser {
         while(eventType != XmlPullParser.END_DOCUMENT){
             if(eventType == XmlPullParser.START_TAG){
                 String name = parser.getName();
-                Log.d("xmldata", "name is: " + name);
+                //Log.d("xmldata", "name is: " + name);
                 if (name == null){
                     continue;
                 }
                 if (name.equals("gauge")){
-                    Log.d("xmldata", "found a datum");
+                    //Log.d("xmldata", "found a datum");
                     gauges.add(readGaugeData(parser));
                 }
             }
@@ -91,7 +91,7 @@ public class WeatherXmlParser {
         private double gaugeLongitude;
         private double distance;
 
-        private Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
+        public Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
                       double gaugeLongitude){
             this.gaugeURL = gaugeURL;
             this.gaugeName = gaugeName;
@@ -100,7 +100,7 @@ public class WeatherXmlParser {
             this.gaugeLongitude = gaugeLongitude;
         }
 
-        private Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
+        public Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
                       double gaugeLongitude, double distance){
             this.gaugeURL = gaugeURL;
             this.gaugeName = gaugeName;
@@ -153,7 +153,7 @@ public class WeatherXmlParser {
     // to their respective "read" methods for processing. Otherwise, skips the tag.
 
     private Gauge readGaugeData(XmlPullParser parser) throws XmlPullParserException, IOException{
-        Log.d("xmlData", "readGaugeData");
+        //Log.d("xmlData", "readGaugeData");
         parser.require(XmlPullParser.START_TAG, ns, "gauge");
         String url = null;
         String name = null;
@@ -192,7 +192,7 @@ public class WeatherXmlParser {
 
     // Processes name tags from site.
     private String readName(XmlPullParser parser) throws IOException, XmlPullParserException{
-        Log.d("xmlData", "readingValid");
+        //Log.d("xmlData", "readingValid");
         parser.require(XmlPullParser.START_TAG, ns, NAME_TAG);
         String gaugeName = readText(parser);
         parser.require(XmlPullParser.END_TAG, ns, NAME_TAG);
@@ -201,7 +201,7 @@ public class WeatherXmlParser {
 
     // Processes id tags from site.
     private String readID(XmlPullParser parser) throws IOException, XmlPullParserException{
-        Log.d("xmlData", "readingPrimary");
+        //Log.d("xmlData", "readingPrimary");
         parser.require(XmlPullParser.START_TAG, ns, ID_TAG);
         String gaugeID = readText(parser);
         parser.require(XmlPullParser.END_TAG, ns, ID_TAG);
@@ -238,7 +238,7 @@ public class WeatherXmlParser {
 
     //For the tags gaugeName and gaugeID, extracts their text values.
     private String readText(XmlPullParser parser) throws IOException, XmlPullParserException{
-        Log.d("xmlData", "readingText");
+        //Log.d("xmlData", "readingText");
         String result = "";
         if(parser.next() == XmlPullParser.TEXT){
             result = parser.getText();
@@ -249,7 +249,7 @@ public class WeatherXmlParser {
 
     //skip tags we don't want
     private void skip(XmlPullParser parser) throws  XmlPullParserException, IOException{
-        Log.d("xmlData", "skip");
+        //Log.d("xmlData", "skip");
         if(parser.getEventType() != XmlPullParser.START_TAG){
             throw new IllegalStateException();
         }

@@ -1,6 +1,9 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.content.SharedPreferences;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
@@ -9,6 +12,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 
@@ -36,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
@@ -43,14 +48,22 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private GoogleMap mMap;
     ArrayList<Gauge> myList;
     LinearLayout gaugeDataLayout;
+    private int distanceAway;
+    private Location location;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_fragment);
+        Log.d("Timer","Finish");
 
          myList = (ArrayList<Gauge>)getIntent().getSerializableExtra("LIST_OF_RESULTS");
+         distanceAway = getIntent().getIntExtra("DISTANCE",5);
+         location = getIntent().getParcelableExtra("MY_LOCATION");
+
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -74,8 +87,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+
+
         // Add a marker in Sydney and move the camera
-        LatLng myLocation = new LatLng(38.796943,-77.071622);
+        LatLng myLocation = new LatLng(location.getLatitude(),location.getLongitude());
         //LatLng farthestLocation = new LatLng(38.830833,-77.134722);
 
         LatLng sydney = new LatLng(-34, 151);
@@ -105,8 +120,30 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         //mMap.addMarker(new MarkerOptions().position(farthestLocation));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
-        //zoom levels 5 miles - 13 20miles - 10, 50mils - 8
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLocation,12));
+        //zoom levels 5 miles - 12 20miles - 10, 50mils - 8
+
+        int zoomLevel = 0;
+        switch (distanceAway){
+            case 5:
+                zoomLevel = 12;
+                break;
+            case 10:
+                zoomLevel = 11;
+                break;
+            case 20:
+                zoomLevel = 10;
+                break;
+            case 50:
+                zoomLevel = 8;
+                break;
+            default:
+                zoomLevel = 5;
+                break;
+
+
+
+        }
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLocation,zoomLevel));
     }
 
     @Override
@@ -115,7 +152,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Gauge gauge = (Gauge)marker.getTag();
 
         if(gauge != null){
-        Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID());
+        Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
         LoadGauge task = new LoadGauge();
         task.execute(gauge);
         return false;
@@ -244,6 +281,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
          // Given a string representation of a URL, sets up a connection and gets
              // an input stream.
          private InputStream downloadUrl(String urlString) throws IOException {
+            Log.d("urlString",urlString);
              URL url = new URL(urlString);
              HttpURLConnection conn = (HttpURLConnection) url.openConnection();
              conn.setReadTimeout(10000 /* milliseconds */);
@@ -254,5 +292,23 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                      conn.connect();
              return conn.getInputStream();
 
+    }
+
+    private Address getAddress(String zipCode){
+
+        Address address = null;
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try{
+            List<Address> addressList = geocoder.getFromLocationName(zipCode,1);
+            Log.d("address6",addressList.size() + " " + String.valueOf(addressList));
+            if(addressList.size() > 0) {
+                address = addressList.get(0);
+
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        return address;
     }
 }

@@ -15,13 +15,43 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Cameron Run at Fenwick Drive"/>
-    
-    <TextView
-        android:id="@+id/current_water_height"
+        android:text="Find A Gauge"/>
+
+    <Button
+        android:id="@+id/current_location_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="20sp"/>
+        android:text="Use Current Location"/>
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:text="Or"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <EditText
+            android:id="@+id/zip_code_edit_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:hint="Enter Zip Code"
+            android:inputType="number"
+            android:maxLength="5"/>
+        <TextView
+            android:id="@+id/invalid_zip_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/holo_red_light"
+            android:text="Invalid Zip Code"/>
+    </LinearLayout>
+    <Button
+        android:id="@+id/search_by_zip_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="search by zip code"/>
 
     <TextView
         android:id="@+id/current_time"
