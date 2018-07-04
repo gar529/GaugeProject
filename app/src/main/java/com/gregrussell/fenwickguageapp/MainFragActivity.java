@@ -1,6 +1,14 @@
 package com.gregrussell.fenwickguageapp;
 
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.SQLException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LevelListDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -38,6 +46,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -46,10 +55,17 @@ import java.util.TimeZone;
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private GoogleMap mMap;
-    ArrayList<Gauge> myList;
+    List<Gauge> myList;
+    List<Gauge> allGauges;
     LinearLayout gaugeDataLayout;
     private int distanceAway;
     private Location location;
+    private Context mContext;
+    private List<Marker> markerList;
+    private float zoomLevel[] = {11,10,8,0};
+    private float currentZoomLevel = 0;
+    private Location previousLocation;
+    final double MILE_CONVERTER = .000621371;
 
 
 
@@ -59,17 +75,19 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         setContentView(R.layout.map_fragment);
         Log.d("Timer","Finish");
 
-         myList = (ArrayList<Gauge>)getIntent().getSerializableExtra("LIST_OF_RESULTS");
+        mContext = this;
+         //myList = (ArrayList<Gauge>)getIntent().getSerializableExtra("LIST_OF_RESULTS");
          distanceAway = getIntent().getIntExtra("DISTANCE",5);
          location = getIntent().getParcelableExtra("MY_LOCATION");
+         previousLocation = location;
 
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+
         gaugeDataLayout = (LinearLayout) findViewById(R.id.gauge_data_layout);
         RelativeLayout mapContainer = (RelativeLayout)findViewById(R.id.map_container);
+
+        GetGauges task = new GetGauges();
+        task.execute();
 
     }
 
@@ -106,12 +124,117 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 position(myLocation).icon(BitmapDescriptorFactory.
                 defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
         myLocationMarker.setTag(null);
+        markerList = new ArrayList<Marker>();
         for(int i=0;i<myList.size();i++){
             LatLng gauge = new LatLng(myList.get(i).getGaugeLatitude(), myList.get(i).getGaugeLongitude());
-            Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(myList.get(i).getGaugeName()));
+            //Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(myList.get(i).getGaugeName()));
+            Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(myList.get(i).getGaugeName()),mMap.getCameraPosition().zoom));
             marker.setTag(myList.get(i));
+            markerList.add(marker);
+
 
         }
+        mMap.setOnCameraMoveStartedListener(new GoogleMap.OnCameraMoveStartedListener() {
+            @Override
+            public void onCameraMoveStarted(int i) {
+               Log.d("mapPosition1", "camera position: " + String.valueOf(mMap.getCameraPosition()));
+            }
+        });
+
+        mMap.setOnCameraIdleListener(new GoogleMap.OnCameraIdleListener() {
+            @Override
+            public void onCameraIdle() {
+                Log.d("mapPosition2", "camera position: " + String.valueOf(mMap.getCameraPosition()));
+                Log.d("mapPostion8","myList size: " + myList.size());
+
+                Float zoom = mMap.getCameraPosition().zoom;
+                Location myLocation = new Location("");
+                myLocation.setLatitude(mMap.getCameraPosition().target.latitude);
+                myLocation.setLongitude(mMap.getCameraPosition().target.longitude);
+
+                if(previousLocation.distanceTo(myLocation) > 50 * MILE_CONVERTER){
+                    GetLocations gl = new GetLocations(myLocation, allGauges);
+                    List<Gauge> gaugeList = gl.getClosestGauges(250);
+
+                    Float mZoom;
+                    if(zoom > zoomLevel[0]){
+                        mZoom = zoomLevel[0];
+                    }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
+                        mZoom = zoomLevel[1];
+                    }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+                        mZoom = zoomLevel[2];
+                    }else{
+                        mZoom = zoomLevel[3];
+                    }
+                    if(mZoom == currentZoomLevel){
+                        for(int i=0;i< gaugeList.size();i++){
+                            LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+                            //Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+
+
+                            Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()),zoom));
+                            marker.setTag(gaugeList.get(i));
+                            markerList.add(marker);
+                        }
+
+                    }
+                    mMap.clear();
+                    markerList.clear();
+                    for(int i=0;i< gaugeList.size();i++){
+                        LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+                        //Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+                        Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()),zoom));
+                        marker.setTag(gaugeList.get(i));
+                        markerList.add(marker);
+
+
+
+
+                    }
+                }
+
+                if(zoom > zoomLevel[0]){
+
+                    if(zoomLevel[0]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[0];
+
+                        for (int i = 0; i < markerList.size(); i++) {
+                            markerList.get(i).setIcon(BitmapDescriptorFactory.defaultMarker());
+                        }
+
+                    }
+
+                }else if(zoom > zoomLevel [1] && zoom <= zoomLevel[0]){
+                    if(zoomLevel[1]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[1];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                        }
+                    }
+                }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+                    if(zoomLevel[2]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[2];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
+                        }
+                    }
+                }else{
+                    if(zoomLevel[3]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[3];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                        }
+                    }
+                }
+
+
+
+            }
+        });
+
+
+
+
 
 
 
@@ -120,7 +243,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         //mMap.addMarker(new MarkerOptions().position(farthestLocation));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
-        //zoom levels 5 miles - 12 20miles - 10, 50mils - 8
+        //zoom levels 5 miles - 12, 10miles - 11, 20miles - 10, 50miles - 8, 100miles - 7, 250miles - 6, 500miles < - 5
 
         int zoomLevel = 0;
         switch (distanceAway){
@@ -146,6 +269,51 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLocation,zoomLevel));
     }
 
+    private boolean containsMarker(List<Marker> list, String name){
+
+        for(int i = 0; i< list.size();i++){
+            Gauge g = (Gauge)list.get(i).getTag();
+            if(g.getGaugeName().equals(name)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private MarkerOptions iconChangedOptions (MarkerOptions markerOptions, Float zoom){
+
+        if(zoom > zoomLevel[0]){
+            markerOptions.icon(BitmapDescriptorFactory.defaultMarker());
+        }else if(zoom > zoomLevel [1] && zoom <= zoomLevel[0]){
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+        }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
+        }else{
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+        }
+        return markerOptions;
+    }
+
+
+
+    public Bitmap resizeMapIcons(int width, int height){
+        //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
+        Drawable drawable = getResources().getDrawable(R.drawable.marker_circle);
+        if(drawable instanceof  BitmapDrawable){
+          //  Log.d("mapPosition7", "bitmap drawable");
+            return ((BitmapDrawable)drawable).getBitmap();
+        }
+
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0,0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+
+        //Log.d("mapPosition5", "bitmap value: " + String.valueOf(bitmap));
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, false);
+        return resizedBitmap;
+    }
+
     @Override
     public boolean onMarkerClick(final Marker marker){
 
@@ -162,6 +330,43 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return true;
         }
 
+    }
+
+    private class GetGauges extends AsyncTask<Void, Void, List<Gauge>>{
+        @Override
+        protected List<Gauge> doInBackground(Void... params){
+
+            allGauges = getAllGauges();
+            GetLocations gl = new GetLocations(location,allGauges);
+            return gl.getClosestGauges(100);
+        }
+        @Override
+        protected void onPostExecute(List<Gauge> result){
+
+            myList = result;
+            // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+            SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.map);
+            mapFragment.getMapAsync(MainFragActivity.this);
+
+
+        }
+
+        private List<Gauge> getAllGauges(){
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+            return myDBHelper.getAllGauges();
+        }
     }
 
     private class LoadGauge extends AsyncTask<Gauge, Void, List<Datum>>{

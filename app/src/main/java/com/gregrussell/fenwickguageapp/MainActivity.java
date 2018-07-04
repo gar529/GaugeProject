@@ -461,13 +461,13 @@ public class MainActivity extends Activity {
             myLocation.setLongitude(params.address.getLongitude());
             GetLocations getLocations = new GetLocations(myLocation,params.gaugeList);
 
-            return getLocations.getClosetGauges(distanceAway);
+            return getLocations.getClosestGauges(distanceAway);
         }
         private ClosestGaugeParamsGPS findClosestGaugeByGPS(ClosestGaugeParamsGPS params){
 
             Log.d("locations", "list size " + params.gaugeList.size());
             GetLocations getLocations = new GetLocations(params.location,params.gaugeList);
-            List<Gauge> locationList = getLocations.getClosetGauges(distanceAway);
+            List<Gauge> locationList = getLocations.getClosestGauges(distanceAway);
             ClosestGaugeParamsGPS newParams = new ClosestGaugeParamsGPS(locationList,params.location);
             return newParams;
         }

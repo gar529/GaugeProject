@@ -18,16 +18,19 @@
             android:value="@string/google_maps_key" />
 
         <activity android:name=".MainActivity">
+
+        </activity>
+        <activity android:name=".MainFragmentActivity" />
+        <activity
+            android:name=".MainFragActivity"
+            android:label="@string/title_activity_main_frag"></activity>
+        <activity android:name=".HomeFragmentActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainFragmentActivity" />
-        <activity
-            android:name=".MainFragActivity"
-            android:label="@string/title_activity_main_frag"></activity>
     </application>
 
 </manifest>
