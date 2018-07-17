@@ -23,6 +23,7 @@ public class WeatherXmlParser {
     private static final String ID_TAG = "id";
     private static final String LAT_TAG = "lat";
     private static final String LON_TAG = "lon";
+    private static final String ADDRESS_TAG = "address";
 
     private static final String ns = null;
 
@@ -89,24 +90,27 @@ public class WeatherXmlParser {
         private String gaugeID;
         private double gaugeLatitude;
         private double gaugeLongitude;
+        private String gaugeAddress;
         private double distance;
 
         public Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
-                      double gaugeLongitude){
+                      double gaugeLongitude, String gaugeAddress){
             this.gaugeURL = gaugeURL;
             this.gaugeName = gaugeName;
             this.gaugeID = gaugeID;
             this.gaugeLatitude = gaugeLatitude;
             this.gaugeLongitude = gaugeLongitude;
+            this.gaugeAddress = gaugeAddress;
         }
 
         public Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
-                      double gaugeLongitude, double distance){
+                      double gaugeLongitude, String gaugeAddress, double distance){
             this.gaugeURL = gaugeURL;
             this.gaugeName = gaugeName;
             this.gaugeID = gaugeID;
             this.gaugeLatitude = gaugeLatitude;
             this.gaugeLongitude = gaugeLongitude;
+            this.gaugeAddress = gaugeAddress;
             this.distance = distance;
         }
 
@@ -140,6 +144,12 @@ public class WeatherXmlParser {
         public void setGaugeLongitude(double lon){
             this.gaugeLongitude = lon;
         }
+        public String getGaugeAddress(){
+            return this.gaugeAddress;
+        }
+        public void setGaugeAddress(String address){
+            this.gaugeAddress = address;
+        }
         public double getDistance(){
             return this.distance;
         }
@@ -160,6 +170,7 @@ public class WeatherXmlParser {
         String id = null;
         double lat = 0.0;
         double lon = 0.0;
+        String address = null;
         while(parser.next() != XmlPullParser.END_TAG){
             if(parser.getEventType() != XmlPullParser.START_TAG){
                 continue;
@@ -174,12 +185,16 @@ public class WeatherXmlParser {
             }else if(tag.equals(LAT_TAG)){
                 lat = readLat(parser);
             }else if(tag.equals(LON_TAG)){
+                //Log.d("xmlData9","found a lon");
                 lon = readLon(parser);
+            }else if(tag.equals(ADDRESS_TAG)){
+                //Log.d("xmlData10","found an address");
+                address = readAddress(parser);
             }else{
                 skip(parser);
             }
         }
-        return new Gauge(url, name, id, lat, lon);
+        return new Gauge(url, name, id, lat, lon, address);
     }
     // Processes url tags from site
 
@@ -233,6 +248,13 @@ public class WeatherXmlParser {
             e.printStackTrace();
         }
         return lonCoordinate;
+    }
+
+    private String readAddress(XmlPullParser parser) throws IOException, XmlPullParserException{
+        parser.require(XmlPullParser.START_TAG,ns,ADDRESS_TAG);
+        String gaugeAddress = readText(parser);
+        parser.require(XmlPullParser.END_TAG,ns,ADDRESS_TAG);
+        return gaugeAddress;
     }
 
 

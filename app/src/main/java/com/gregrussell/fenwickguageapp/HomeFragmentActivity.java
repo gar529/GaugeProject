@@ -83,9 +83,12 @@ public class HomeFragmentActivity extends FragmentActivity {
 
         mContext = this;
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        sPref = sharedPrefs.getString("listPref", "Wi-fi");
+        sPref = sharedPrefs.getString("listPref", ANY);
         Log.d("shared",sPref);
         updateConnectedFlags();
+
+        Log.d("mobileConnected",String.valueOf(mobileConnected));
+        Log.d("wifiConnected",String.valueOf(wifiConnected));
 
         setContentView(R.layout.home_fragment_layout);
 
@@ -321,7 +324,7 @@ public class HomeFragmentActivity extends FragmentActivity {
                     stream.close();
                 }
             }
-            Log.d("downloadXML2","Finish");
+            Log.d("downloadXML2","Finish, gauge list size: " + gaugeList.size());
             return gaugeList;
         }
 

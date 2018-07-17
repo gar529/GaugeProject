@@ -1,26 +1,35 @@
 package com.gregrussell.fenwickguageapp;
 
+import android.app.SearchManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteStatement;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.provider.BaseColumns;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+
+import com.google.android.gms.maps.model.Marker;
 import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
-    public static final int DATABASE_VERSION = 1;
+    public static final int DATABASE_VERSION = 3;
     public static final String DATABASE_PATH = "/data/data/com.gregrussell.fenwickguageapp/databases/";
     public static final String DATABASE_NAME = "gauges.db";
+    private static Context mContext;
     private SQLiteDatabase myDataBase;
 
 
@@ -32,6 +41,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         public static final String COLUMN_URL = "gauge_url";
         public static final String COLUMN_LATITUDE = "gauge_latitude";
         public static final String COLUMN_LONGITUDE = "gauge_longitude";
+        public static final String COLUMN_ADDRESS = "gauge_address";
         public static final String COLUMN_ACTIVE = "gauge_active";
         public static final String COLUMN_VERSION = "gauge_version";
         public static final String COLUMN_TIMESTAMP = "gauge_timestamp";
@@ -45,26 +55,67 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         public static final String COLUMN_TIMESTAMP = "favorite_timestamp";
     }
 
-    private static final String SQL_CREATE_TABLE_GAUGES = "CREATE TABLE " + Gauges.TABLE_NAME + " (" +
-            Gauges.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " + Gauges.COLUMN_IDENTIFIER + " TEXT UNIQUE, " +
-            Gauges.COLUMN_NAME + " TEXT, " + Gauges.COLUMN_URL + " TEXT, " + Gauges.COLUMN_LATITUDE + " NUMERIC, " +
-            Gauges.COLUMN_LONGITUDE + " NUMERIC, " + Gauges.COLUMN_ACTIVE + " INTEGER NOT NULL DEFAULT 1, " +
-            Gauges.COLUMN_VERSION + " INTEGER NOT NULL DEFAULT 1, " + Gauges.COLUMN_TIMESTAMP + " INTEGER)";
+    public static class Markers implements BaseColumns{
+        public static final String TABLE_NAME = "markers";
+        public static final String COLUMN_ID = "marker_id";
+        public static final String COLUMN_IDENTIFIER = "gauge_identifier";
+    }
 
-    private static final String SQL_CREATE_TABLE_FAVORITES = "CREATE TABLE " + Favorites.TABLE_NAME +
-            " (" + Favorites.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " + Favorites.COLUMN_IDENTIFIER +
-            " TEXT, " + Favorites.COLUMN_ACTIVE + " TEXT, " + Favorites.COLUMN_TIMESTAMP +
-            " INTEGER, FOREIGN KEY(" + Favorites.COLUMN_IDENTIFIER +") REFERENCES " +
+    public static class Suggestions implements BaseColumns {
+        public static final String TABLE_NAME = "suggestions";
+        public static final String _ID = "_id";
+    }
+
+    private static final String SQL_CREATE_TABLE_GAUGES = "CREATE TABLE " +
+            Gauges.TABLE_NAME + " (" +
+            Gauges.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            Gauges.COLUMN_IDENTIFIER + " TEXT UNIQUE, " +
+            Gauges.COLUMN_NAME + " TEXT, " +
+            Gauges.COLUMN_URL + " TEXT, " +
+            Gauges.COLUMN_LATITUDE + " NUMERIC, " +
+            Gauges.COLUMN_LONGITUDE + " NUMERIC, " +
+            Gauges.COLUMN_ADDRESS + " TEXT, " +
+            Gauges.COLUMN_ACTIVE + " INTEGER NOT NULL DEFAULT 1, " +
+            Gauges.COLUMN_VERSION + " INTEGER NOT NULL DEFAULT 1, " +
+            Gauges.COLUMN_TIMESTAMP + " INTEGER)";
+
+    private static final String SQL_CREATE_TABLE_FAVORITES = "CREATE TABLE " +
+            Favorites.TABLE_NAME + " (" +
+            Favorites.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            Favorites.COLUMN_IDENTIFIER +
+            " TEXT UNIQUE, " +
+            Favorites.COLUMN_ACTIVE + " TEXT, " +
+            Favorites.COLUMN_TIMESTAMP + " INTEGER, FOREIGN KEY(" +
+            Favorites.COLUMN_IDENTIFIER +") REFERENCES " +
             Gauges.TABLE_NAME + "(" + Gauges.COLUMN_IDENTIFIER + "))";
+
+    private static final String SQL_CREATE_TABLE_MARKERS = "CREATE TABLE " + Markers.TABLE_NAME + " (" +
+            Markers.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " + Markers.COLUMN_IDENTIFIER +
+            " TEXT UNIQUE, FOREIGN KEY(" + Markers.COLUMN_IDENTIFIER + ") REFERENCES " +
+            Gauges.TABLE_NAME + "(" + Gauges.COLUMN_IDENTIFIER + "))";
+
+    private static final String SQL_CREATE_TABLE_SUGGESTIONS = "CREATE TABLE " + Suggestions.TABLE_NAME +
+            " ( " + Suggestions._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            SearchManager.SUGGEST_COLUMN_TEXT_1 + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_TEXT_2 + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_INTENT_ACTION + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_INTENT_DATA + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA + " TEXT, " +
+            SearchManager.SUGGEST_COLUMN_QUERY + " TEXT)";
 
     private static final String SQL_DELETE_GAUGES ="DROP TABLE IF EXISTS " + Gauges.TABLE_NAME;
 
     private static final String SQL_DELETE_FAVORITES = "DROP TABLE IF EXISTS " + Favorites.TABLE_NAME;
 
+    private static final String SQL_DELETE_MARKERS = "DROP TABLE IF EXISTS " + Markers.TABLE_NAME;
+
+    private static final String SQL_DELETE_SUGGESTIONS = "DROP TABLE IF EXISTS " + Suggestions.TABLE_NAME;
+
 
     public DataBaseHelperGauges(Context context){
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-
+        mContext = context;
 
     }
 
@@ -73,9 +124,19 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
     }
 
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion){
+        Log.d("onUpgrade","on Upgrade");
         db.execSQL(SQL_DELETE_GAUGES);
         db.execSQL(SQL_DELETE_FAVORITES);
-        onCreate(db);
+        db.execSQL(SQL_DELETE_MARKERS);
+        db.execSQL(SQL_DELETE_SUGGESTIONS);
+
+
+        db.execSQL(SQL_CREATE_TABLE_GAUGES);
+        db.execSQL(SQL_CREATE_TABLE_FAVORITES);
+        db.execSQL(SQL_CREATE_TABLE_MARKERS);
+        db.execSQL(SQL_CREATE_TABLE_SUGGESTIONS);
+
+
     }
 
     @Override
@@ -88,12 +149,34 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         if(dbExist){
             //do nothing, database already exists
             Log.d("databaseHelper1", "database exists");
+
+            SQLiteDatabase db = this.getWritableDatabase();
+            if(!checkTableExists(Gauges.TABLE_NAME)){
+                db.execSQL(SQL_CREATE_TABLE_GAUGES);
+                Log.d("databaseHelper5", String.valueOf(checkTableExists(Gauges.TABLE_NAME)));
+            }
+            if(!checkTableExists(Favorites.TABLE_NAME)){
+                db.execSQL(SQL_CREATE_TABLE_FAVORITES);
+                Log.d("databaseHelper6", String.valueOf(checkTableExists(Favorites.TABLE_NAME)));
+            }
+            if(!checkTableExists(Markers.TABLE_NAME)){
+                db.execSQL(SQL_CREATE_TABLE_MARKERS);
+                Log.d("databaseHelper7", String.valueOf(checkTableExists(Markers.TABLE_NAME)));
+            }
+            if(!checkTableExists(Suggestions.TABLE_NAME)){
+                db.execSQL(SQL_CREATE_TABLE_SUGGESTIONS);
+
+            }
+
         }else{
             //create database
             Log.d("databaseHelper2", "database doesn't exist, creating...");
             SQLiteDatabase db = this.getReadableDatabase();
             db.execSQL(SQL_CREATE_TABLE_GAUGES);
             db.execSQL(SQL_CREATE_TABLE_FAVORITES);
+            db.execSQL(SQL_CREATE_TABLE_MARKERS);
+            db.execSQL(SQL_CREATE_TABLE_SUGGESTIONS);
+
         }
     }
 
@@ -110,6 +193,26 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             checkDB.close();
         }
         return checkDB != null ? true : false;
+    }
+
+    private boolean checkTableExists(String table){
+        try{
+            openDataBase();
+        }catch (SQLException sqle){
+            throw sqle;
+        }
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("select DISTINCT tbl_name from sqlite_master where tbl_name = '" + table + "'",null);
+
+        if(cursor!=null){
+            if(cursor.getCount() > 0){
+                cursor.close();
+                return true;
+            }
+            cursor.close();
+        }
+        return false;
 
     }
 
@@ -149,30 +252,18 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
     public void addGauges(List<Gauge> gaugeList, int version){
 
+        //delete records from gauges table and suggestions table in order to add up to date records
+        clearTables();
+
         Log.d("addGauges1", "Start");
         SQLiteDatabase db = this.getWritableDatabase();
-        /*ContentValues values = new ContentValues();
-
-        for(int i = 0; i < gaugeList.size(); i++){
-            Log.d("addGauges3", "progress " + i + "/" + gaugeList.size());
-            values.put(Gauges.COLUMN_IDENTIFIER, gaugeList.get(i).getGaugeID());
-            values.put(Gauges.COLUMN_NAME, gaugeList.get(i).getGaugeName());
-            values.put(Gauges.COLUMN_URL,gaugeList.get(i).getGaugeURL());
-            values.put(Gauges.COLUMN_LATITUDE,gaugeList.get(i).getGaugeLatitude());
-            values.put(Gauges.COLUMN_LONGITUDE,gaugeList.get(i).getGaugeLongitude());
-            values.put(Gauges.COLUMN_ACTIVE,1);
-            values.put(Gauges.COLUMN_VERSION,version);
-            values.put(Gauges.COLUMN_TIMESTAMP,System.currentTimeMillis());
-            db.insert(Gauges.TABLE_NAME,null,values);
-
-        }*/
 
         try{
             db.beginTransaction();
             String query = "INSERT INTO " + Gauges.TABLE_NAME + " (" + Gauges.COLUMN_IDENTIFIER + ", " +
                     Gauges.COLUMN_NAME + ", " + Gauges.COLUMN_URL + ", " + Gauges.COLUMN_LATITUDE +
-                    ", " + Gauges.COLUMN_LONGITUDE + ", " + Gauges.COLUMN_ACTIVE + ", " +
-                    Gauges.COLUMN_VERSION + ", " + Gauges.COLUMN_TIMESTAMP + ") VALUES (?,?,?,?,?,?,?,?)";
+                    ", " + Gauges.COLUMN_LONGITUDE + ", " + Gauges.COLUMN_ADDRESS + ", " + Gauges.COLUMN_ACTIVE + ", " +
+                    Gauges.COLUMN_VERSION + ", " + Gauges.COLUMN_TIMESTAMP + ") VALUES (?,?,?,?,?,?,?,?,?)";
             SQLiteStatement statement = db.compileStatement(query);
 
             for(int i =0; i<gaugeList.size();i++){
@@ -183,12 +274,11 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
                 statement.bindString(3,gaugeList.get(i).getGaugeURL());
                 statement.bindDouble(4,gaugeList.get(i).getGaugeLatitude());
                 statement.bindDouble(5,gaugeList.get(i).getGaugeLongitude());
-                statement.bindLong(6,1);
-                statement.bindLong(7,version);
-                statement.bindLong(8, System.currentTimeMillis());
+                statement.bindString(6,gaugeList.get(i).getGaugeAddress());
+                statement.bindLong(7,1);
+                statement.bindLong(8,version);
+                statement.bindLong(9, System.currentTimeMillis());
                 statement.executeInsert();
-
-
             }
             db.setTransactionSuccessful();
         }catch (Exception e){
@@ -197,9 +287,92 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         }finally {
             db.endTransaction();
         }
-
         db.close();
         Log.d("addGauges2","Finish");
+        addSuggestions(gaugeList);
+    }
+
+    public void clearTables(){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.execSQL("DELETE FROM " + Gauges.TABLE_NAME);
+        db.execSQL("DELETE FROM " + Suggestions.TABLE_NAME);
+    }
+
+    public void addMarkers(List<Marker> markerList){
+        Log.d("addMarkers1", "Start");
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        try{
+            db.beginTransaction();
+            String query = "INSERT INTO " + Markers.TABLE_NAME + " (" + Markers.COLUMN_IDENTIFIER + ") VALUES (?)";
+            SQLiteStatement statement = db.compileStatement(query);
+
+            for(int i =0; i<markerList.size();i++){
+                //Log.d("addGauges3", "progress " + i + "/" + gaugeList.size());
+                statement.clearBindings();
+                statement.bindString(1,((Gauge)markerList.get(i).getTag()).getGaugeID());
+                statement.executeInsert();
+            }
+            db.setTransactionSuccessful();
+        }catch (Exception e){
+            Log.d("addMarkers4","didn't work");
+            e.printStackTrace();
+        }finally {
+            db.endTransaction();
+        }
+        db.close();
+        Log.d("addMarkers2","Finish");
+    }
+
+    public void addSingleMarker(Marker marker){
+        SQLiteDatabase db = this.getWritableDatabase();
+        try{
+            db.beginTransaction();
+            String query = "INSERT INTO " + Markers.TABLE_NAME + " (" + Markers.COLUMN_IDENTIFIER + ") VALUES (?)";
+            SQLiteStatement statement = db.compileStatement(query);
+
+            statement.bindString(1,((Gauge)marker.getTag()).getGaugeID());
+            statement.executeInsert();
+            db.setTransactionSuccessful();
+        }catch (Exception e){
+
+            e.printStackTrace();
+        }finally {
+            db.endTransaction();
+        }
+        db.close();
+    }
+
+    public void clearMarkers(){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.execSQL("DELETE FROM " + Markers.TABLE_NAME);
+        db.close();
+    }
+
+    public boolean checkMarkerExists(String identifier){
+
+
+        String idInTable;
+        SQLiteDatabase db = this.getReadableDatabase();
+        try{
+            db.beginTransaction();
+            String query = "SELECT " + Markers.COLUMN_IDENTIFIER + " FROM " + Markers.TABLE_NAME +
+                    " WHERE " + Markers.COLUMN_IDENTIFIER + " LIKE ?";
+            SQLiteStatement statement = db.compileStatement(query);
+            statement.bindString(1,identifier);
+            idInTable = statement.simpleQueryForString();
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }finally {
+        db.endTransaction();
+        }
+        if(idInTable.toUpperCase().equals(identifier.toUpperCase())){
+            return true;
+        }
+        return false;
+
     }
 
     public List<Gauge> getAllGauges(){
@@ -214,13 +387,96 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
                         cursor.getString(Constants.GAUGES_NAME_POSITION),
                         cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
                         cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION));
+                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
                 gaugeList.add(gauge);
             }while (cursor.moveToNext());
         }
         cursor.close();
         db.close();
         return gaugeList;
+    }
+
+    private void addSuggestions(List<Gauge> gaugeList){
+
+        Log.d("addSuggestions","start");
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        try{
+            db.beginTransaction();
+            String query = "INSERT INTO " + Suggestions.TABLE_NAME + " (" +
+                    SearchManager.SUGGEST_COLUMN_TEXT_1 + ", " +
+                    SearchManager.SUGGEST_COLUMN_TEXT_2 + ", " +
+                    SearchManager.SUGGEST_COLUMN_INTENT_ACTION + ", " +
+                    SearchManager.SUGGEST_COLUMN_INTENT_DATA + ") VALUES (?,?,?,?)";
+            SQLiteStatement statement = db.compileStatement(query);
+
+            for(int i =0; i<gaugeList.size();i++){
+                //Log.d("addGauges3", "progress " + i + "/" + gaugeList.size());
+                statement.clearBindings();
+                statement.bindString(1,gaugeList.get(i).getGaugeName());
+                statement.bindString(2,gaugeList.get(i).getGaugeAddress());
+                statement.bindString(3,"android.intent.action.VIEW");
+                statement.bindString(4,gaugeList.get(i).getGaugeID());
+                statement.executeInsert();
+            }
+            db.setTransactionSuccessful();
+        }catch (Exception e){
+            Log.d("addGauges12","didn't work");
+            e.printStackTrace();
+        }finally {
+            db.endTransaction();
+        }
+        db.close();
+        Log.d("addSuggestions","finish");
+
+
+    }
+
+    private String getAddressFromCoordinates(double lat, double lon, int total, int current){
+
+        Log.d("addSuggestionsGeo","start");
+        List<Address> addressList = new ArrayList<Address>();
+        Geocoder geo = new Geocoder(mContext, Locale.getDefault());
+        try {
+            addressList = geo.getFromLocation(lat, lon, 1);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        Address address = addressList.get(0);
+        String addressString = address.getLocality() + ", " + address.getAdminArea();
+        Log.d("addSuggestionsGeo","finish " + current + "/" + total);
+        return addressString;
+    }
+
+    public Gauge getLocationFromIdentifier(String identifier){
+
+        String url = null;
+        String name = null;
+        String id = null ;
+        double lat = 0;
+        double lon = 0;
+        String address = null;
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Gauges.TABLE_NAME + " WHERE " + Gauges.COLUMN_IDENTIFIER +
+                " LIKE ?";
+        Cursor cursor = db.rawQuery(query,new String[]{identifier});
+        cursor.moveToFirst();
+        try{
+            url = cursor.getString(Constants.GAUGES_URL_POSITION);
+            name = cursor.getString(Constants.GAUGES_NAME_POSITION);
+            id = cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION);
+            lat = cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION);
+            lon = cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION);
+            address = cursor.getString(Constants.GAUGES_ADDRESS_POSITION);
+        }catch (SQLiteException e){
+            e.printStackTrace();
+        }
+        Gauge gauge = new Gauge(url,name,id,lat,lon,address);
+
+        return gauge;
+
+
     }
 
 

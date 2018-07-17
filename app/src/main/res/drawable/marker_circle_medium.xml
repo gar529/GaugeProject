@@ -14,8 +14,8 @@
         <shape
             android:shape = "oval">
             <size
-                android:width="50dp"
-                android:height="50dp"/>
+                android:width="40dp"
+                android:height="40dp"/>
             <solid android:color="#811414"/>
             <stroke android:color="#EA4235"
                 android:width="15dp"/>

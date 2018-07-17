@@ -98,6 +98,9 @@ public class MainActivity extends Activity {
         Log.d("shared",sPref);
         updateConnectedFlags();
 
+        Log.d("mobileDataConnected",String.valueOf(mobileConnected));
+        Log.d("wifiConnected",String.valueOf(wifiConnected));
+
         myContext = this;
         final EditText zipEditText = (EditText)findViewById(R.id.zip_code_edit_text);
         final TextView invalidZip = (TextView)findViewById(R.id.invalid_zip_code);
@@ -627,6 +630,7 @@ public class MainActivity extends Activity {
             Log.d("downloadXML2","Finish");
             return gaugeList;
         }
+
 
         private void addGaugesToDB(List<Gauge> gaugeList, int version){
 

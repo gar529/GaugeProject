@@ -23,6 +23,70 @@ public class GetLocations {
 
     }
 
+    public List<Gauge>[] getClosestGaugesArray(){
+
+        Log.d("getLocation3","start getting gauges");
+
+        List<Gauge> closestGaugesZoomLevel4 = new ArrayList<Gauge>();
+        List<Gauge> closestGaugesZoomLevel3 = new ArrayList<Gauge>();
+        List<Gauge> closestGaugesZoomLevel2 = new ArrayList<Gauge>();
+        List<Gauge> closestGaugesZoomLevel1 = new ArrayList<Gauge>();
+        List<Gauge> closestGaugesZoomLevel0= new ArrayList<Gauge>();
+
+
+        //Log.d("locations2", "list size " + gaugeList.size());
+        if(gaugeList.size() > 0) {
+            for (int i = 0; i < gaugeList.size(); i++) {
+
+                Location gaugeLocation = new Location("");
+                Gauge currentGauge = gaugeList.get(i);
+                gaugeLocation.setLatitude(currentGauge.getGaugeLatitude());
+                gaugeLocation.setLongitude(currentGauge.getGaugeLongitude());
+                double distanceAway = currentLocation.distanceTo(gaugeLocation) * MILE_CONVERTER;
+                //Log.d("locations2", "distance " + currentLocation.distanceTo(gaugeLocation));
+                if(distanceAway <= 10){
+                    currentGauge.setDistance(distanceAway);
+                    closestGaugesZoomLevel0.add(currentGauge);
+                }
+                if(distanceAway > 10 && distanceAway <= 20){
+                    currentGauge.setDistance(distanceAway);
+                    closestGaugesZoomLevel1.add(currentGauge);
+                }
+                if(distanceAway > 20 && distanceAway <= 50){
+                    currentGauge.setDistance(distanceAway);
+                    closestGaugesZoomLevel2.add(currentGauge);
+                }
+                if(distanceAway > 50 && distanceAway <= 100){
+                    currentGauge.setDistance(distanceAway);
+                    closestGaugesZoomLevel3.add(currentGauge);
+                }
+                if (distanceAway >100 && distanceAway <= 250) {
+                    currentGauge.setDistance(distanceAway);
+                    closestGaugesZoomLevel4.add(currentGauge);
+                }
+            }
+            closestGaugesZoomLevel1.addAll(closestGaugesZoomLevel0);
+            closestGaugesZoomLevel2.addAll(closestGaugesZoomLevel1);
+            closestGaugesZoomLevel3.addAll(closestGaugesZoomLevel2);
+            closestGaugesZoomLevel4.addAll(closestGaugesZoomLevel3);
+        }
+
+        List[] gaugeListArray = {closestGaugesZoomLevel0,closestGaugesZoomLevel1,closestGaugesZoomLevel2, closestGaugesZoomLevel3,closestGaugesZoomLevel4};
+        //Log.d("locations", "unsorted locations that are within 5 miles: ");
+
+
+
+
+        //Log.d("locations", "sorted locations that are within 5 miles: ");
+
+
+
+        Log.d("getlocation4","finished getting gauges");
+        return gaugeListArray;
+
+
+    }
+
 
 
 

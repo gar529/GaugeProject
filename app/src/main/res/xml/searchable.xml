@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<searchable xmlns:android="http://schemas.android.com/apk/res/android"
+    android:label="@string/app_name"
+    android:searchSuggestAuthority="com.gregrussell.fenwickgaugeapp.SearchContentProvider"
+    android:searchSuggestSelection="suggest_text_1 LIKE ? OR suggest_text_2 LIKE ?">
+</searchable>
