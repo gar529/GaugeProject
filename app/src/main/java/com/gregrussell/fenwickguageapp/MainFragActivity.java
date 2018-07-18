@@ -14,6 +14,7 @@ import android.database.SQLException;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LevelListDrawable;
@@ -27,6 +28,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -41,6 +43,7 @@ import android.widget.SearchView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
@@ -93,7 +96,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private RelativeLayout invisibleLayout;
     private SimpleCursorAdapter mAdapter;
     private SearchView searchView;
-
+    private Marker selectedMarker;
+    private ListView searchSuggestions;
     private String mCurFilter;
 
 
@@ -152,7 +156,29 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Log.d("searchField","clicked");
                 if(gaugeDataLayout.getVisibility() != View.GONE) {
                     gaugeDataLayout.setVisibility(View.GONE);
+                    if(selectedMarker != null){
+                        resetSelectedMarker();
+                        selectedMarker = null;
+                    }
                 }
+            }
+        });
+
+        searchField.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                Log.d("searchField","focus changed");
+
+                if(b){
+                    if(gaugeDataLayout.getVisibility() != View.GONE) {
+                        gaugeDataLayout.setVisibility(View.GONE);
+                        if(selectedMarker != null){
+                            resetSelectedMarker();
+                            selectedMarker = null;
+                        }
+                    }
+                }
+
             }
         });
 
@@ -167,7 +193,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 searchView.clearFocus();
                 if(gaugeDataLayout.getVisibility() != View.GONE) {
                     gaugeDataLayout.setVisibility(View.GONE);
+                    if(selectedMarker != null){
+                        resetSelectedMarker();
+                        selectedMarker = null;
+                    }
                 }
+
             }
         });
 
@@ -175,7 +206,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
 
-        ListView searchSuggestions = (ListView)findViewById(R.id.search_suggestions);
+        searchSuggestions = (ListView)findViewById(R.id.search_suggestions);
 
         mAdapter = new SimpleCursorAdapter(this,android.R.layout.simple_list_item_2, null,
                 new String[] {SearchManager.SUGGEST_COLUMN_TEXT_1,SearchManager.SUGGEST_COLUMN_TEXT_2}, new int[] {android.R.id.text1, android.R.id.text2},0);
@@ -193,6 +224,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Log.d("intent12",str);
                 searchView.setQuery(c.getString(1),false);
                 searchView.clearFocus();
+                searchSuggestions.setAdapter(null);
                 Intent intent = new Intent(mContext,MainFragActivity.class);
                 intent.putExtra("DATA",str);
                 startActivity(intent);
@@ -227,7 +259,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         if(Intent.ACTION_SEARCH.equals(intent.getAction())){
             String query = intent.getStringExtra(SearchManager.QUERY);
             Log.d("intent7","search query: " + query);
-            //domysearch(query)
+            search(query);
+            searchView.clearFocus();
+            searchSuggestions.setAdapter(null);
+
         }else if(Intent.ACTION_VIEW.equals(intent.getAction())){
             Uri data = intent.getData();
             Log.d("intent1",data.getLastPathSegment());
@@ -247,6 +282,45 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
 
+    private void search(String query){
+
+        Geocoder geo = new Geocoder(this, Locale.getDefault());
+        List<Address> addressList = new ArrayList<Address>();
+        Address address;
+        Boolean validAddress = false;
+        try {
+            addressList = geo.getFromLocationName(query, 10);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        if(addressList.size() > 0){
+
+
+            int i = 0;
+            do{
+
+                address = addressList.get(i);
+                Log.d("searchAddress4",address.getLocality() + ", " + address.getAdminArea() + ", " + address.getCountryCode() + "   " + addressList.size());
+                i++;
+            }
+            while( i < addressList.size() && !address.getCountryCode().equals("US"));
+
+            Log.d("searchAddress5",String.valueOf(address.getCountryCode().equals("US")));
+
+            if(address.getCountryCode().equals("US")){
+                validAddress = true;
+                LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,12));
+            }else{
+                CharSequence text = "No results for " + query;
+                Toast toast = Toast.makeText(mContext,text,Toast.LENGTH_SHORT);
+                toast.show();
+            }
+
+            }
+
+    }
 
 
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
@@ -305,6 +379,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         // Called when the action bar search text has changed.  Update
         // the search filter, and restart the loader to do a new query
         // with this filter.
+        searchSuggestions.setAdapter(mAdapter);
+        mAdapter.notifyDataSetChanged();
         Log.d("searchView1","text change listener " + newText);
         mCurFilter = !TextUtils.isEmpty(newText) ? newText : null;
         getLoaderManager().restartLoader(0, null, this);
@@ -338,6 +414,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         mMap = googleMap;
         mMap.setMinZoomPreference(7.0f);
 
+        mMap.getUiSettings().setMapToolbarEnabled(false);
+        mMap.getUiSettings().setCompassEnabled(true);
+
+        Log.d("compass", String.valueOf(mMap.getUiSettings().isCompassEnabled()));
+        setCompassPosition();
+
 
         // Add a marker in Sydney and move the camera
         myLatLng = new LatLng(location.getLatitude(),location.getLongitude());
@@ -349,7 +431,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             @Override
             public void onMapClick(LatLng latLng) {
                 Log.d("mapClick","click");
+
                 gaugeDataLayout.setVisibility(View.GONE);
+                if(selectedMarker != null){
+                    resetSelectedMarker();
+                    selectedMarker = null;
+                }
             }
         });
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
@@ -407,48 +494,65 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         Log.d("addMapMarkers2","zoomLevel 0");
                         List<Gauge> mList = gaugeListArray[0];
 
-                        AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                       /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                         AddMarkerAsync task = new AddMarkerAsync();
-                        task.execute(params);
-                        //addMarkers(mList,zoom);
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
                     }
                     else if(mZoom == currentZoomLevel && mZoom == zoomLevel[1]){
                         Log.d("addMapMarkers3","zoomLevel 1");
                         List<Gauge> mList = gaugeListArray[1];
-                        AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                         AddMarkerAsync task = new AddMarkerAsync();
-                        task.execute(params);
-                        //addMarkers(mList,zoom);
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
                     }
                     else if(mZoom == currentZoomLevel && mZoom == zoomLevel[2]){
                         Log.d("addMapMarkers4","zoomLevel 2");
                         List<Gauge> mList = gaugeListArray[2];
-                        AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                         AddMarkerAsync task = new AddMarkerAsync();
-                        task.execute(params);
-                        //addMarkers(mList,zoom);
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
                     }
                     else if(mZoom == currentZoomLevel && mZoom == zoomLevel[3]){
                         Log.d("addMapMarkers5","zoomLevel 3");
                         List<Gauge> mList = gaugeListArray[3];
-                        AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                         AddMarkerAsync task = new AddMarkerAsync();
-                        task.execute(params);
-                        //addMarkers(mList,zoom);
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
                     }
                     else if(mZoom == currentZoomLevel && mZoom == zoomLevel[4]){
                         Log.d("addMapMarkers6","zoomLevel 4");
                         //addMarkers(gaugeList,zoom);
                         List<Gauge> mList = gaugeListArray[4];
-                        AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                         AddMarkerAsync task = new AddMarkerAsync();
-                        task.execute(params);
-                        //addMarkers(mList,zoom);
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
                     }else{
                         Log.d("addMapMarkers1","clearing map");
                         Log.d("addMapMarkers7", "mZoom is: " + mZoom + ", currentZoom is: " + currentZoomLevel);
-                        mMap.clear();
-                        markerList.clear();
+
+                        if(selectedMarker !=null) {
+                            Log.d("markerStuff5", ((Gauge) selectedMarker.getTag()).getGaugeID());
+                            Gauge gauge = (Gauge) selectedMarker.getTag();
+                            mMap.clear();
+                            markerList.clear();
+                            selectedMarker.setTag(gauge);
+
+                        }else {
+                            mMap.clear();
+                            markerList.clear();
+                        }
+
+                        Log.d("markerStuff4",String.valueOf(selectedMarker));
+                        if(selectedMarker != null) {
+                            markerList.add(selectedMarker); //selectedMarker code
+                            Log.d("markerStuff5",((Gauge)selectedMarker.getTag()).getGaugeID());
+                        }
+
                         myDBHelper.clearMarkers();
                         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                                 position(myLatLng).icon(BitmapDescriptorFactory.
@@ -465,39 +569,39 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         if(mZoom == zoomLevel[0]){
 
                             List<Gauge> mList = gaugeListArray[0];
-                            AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                             AddMarkerAsync task = new AddMarkerAsync();
-                            task.execute(params);
-                            //addMarkers(mList,zoom);
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
                         }
                         else if(mZoom == zoomLevel[1]){
                             List<Gauge> mList = gaugeListArray[1];
-                            AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                             AddMarkerAsync task = new AddMarkerAsync();
-                            task.execute(params);
-                            //addMarkers(mList,zoom);
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
                         }
                         else if(mZoom == zoomLevel[2]){
                             List<Gauge> mList = gaugeListArray[2];
-                            AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                             AddMarkerAsync task = new AddMarkerAsync();
-                            task.execute(params);
-                            //addMarkers(mList,zoom);
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
                         }
                         else if(mZoom == zoomLevel[3]){
                             List<Gauge> mList = gaugeListArray[3];
-                            AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                             AddMarkerAsync task = new AddMarkerAsync();
-                            task.execute(params);
-                            //addMarkers(mList,zoom);
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
                         }
                         else if(mZoom == zoomLevel[4]){
                             //addMarkers(gaugeList,zoom);
                             List<Gauge> mList = gaugeListArray[4];
-                            AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
                             AddMarkerAsync task = new AddMarkerAsync();
-                            task.execute(params);
-                            //addMarkers(mList,zoom);
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
                         }
 
 
@@ -512,7 +616,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         currentZoomLevel = zoomLevel[0];
 
                         for (int i = 0; i < markerList.size(); i++) {
-                            markerList.get(i).setIcon(BitmapDescriptorFactory.defaultMarker());
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                //markerList.get(i).setIcon(BitmapDescriptorFactory.defaultMarker());
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                            }
                         }
 
                     }
@@ -521,7 +628,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     if(zoomLevel[1]!= currentZoomLevel) {
                         currentZoomLevel = zoomLevel[1];
                         for (int i = 0; i < markerList.size(); i++) {
-                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                            }
 
                         }
                     }
@@ -529,7 +638,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     if(zoomLevel[2]!= currentZoomLevel) {
                         currentZoomLevel = zoomLevel[2];
                         for (int i = 0; i < markerList.size(); i++) {
-                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
+                            }
 
                         }
                     }
@@ -537,7 +648,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     if(zoomLevel[3]!= currentZoomLevel) {
                         currentZoomLevel = zoomLevel[3];
                         for (int i = 0; i < markerList.size(); i++) {
-                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            }
 
                         }
                     }
@@ -545,7 +658,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     if(zoomLevel[4]!= currentZoomLevel) {
                         currentZoomLevel = zoomLevel[4];
                         for (int i = 0; i < markerList.size(); i++) {
-                            markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            }
 
                         }
                     }
@@ -594,6 +709,20 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         searchView.clearFocus();
     }
 
+    private void setCompassPosition(){
+
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        int width = size.x;
+        int height = size.y;
+        int topPadding = height / 6;
+        int leftPadding = width / 20;
+        Log.d("compass","Screen height: " + height +"; top padding: " + topPadding);
+        mMap.setPadding(leftPadding,topPadding,0,0);
+
+    }
+
     private void addMarkers(List<Gauge> gaugeList, Float zoom){
 
 
@@ -605,10 +734,32 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         for(int i=0; i<gaugeList.size();i++){
             LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
             if(!checkMarkers(gaugeList.get(i).getGaugeID())){
-                Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()),zoom));
-                marker.setTag(gaugeList.get(i));
-                markerList.add(marker);
-                nMarkerList.add(marker);
+                //start selectedMarker added code
+                if(selectedMarker != null){
+
+                    Marker marker;
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+                        marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+                    }else {
+                        marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    }
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                    Log.d("markerStuff",String.valueOf(selectedMarker) +"   " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+
+                        markerList.remove(selectedMarker);
+
+                        selectedMarker = marker;
+                    }
+                }else { //end selectedMarker added code
+
+                    Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                }
 
             }
         }
@@ -618,6 +769,66 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
 
     }
+
+
+    private void addMarkersUIThread(List<Gauge> gaugeList, Float zoom){
+
+        invisibleLayout.setVisibility(View.VISIBLE);
+        long currentTime = System.currentTimeMillis();
+        long futureTime = currentTime + 200;
+        while(System.currentTimeMillis() < futureTime){
+
+        }
+
+        Log.d("markersAdded1", "STart");
+        //invisibleLayout.setVisibility(View.VISIBLE);
+        Log.d("markersAdded3", String.valueOf(invisibleLayout.getVisibility()));
+        List<Marker> nMarkerList = new ArrayList<Marker>();
+        Log.d("markersAdded5","loop started");
+        for(int i=0; i<gaugeList.size();i++){
+            LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+            if(!checkMarkers(gaugeList.get(i).getGaugeID())){
+                //start selectedMarker added code
+                if(selectedMarker != null){
+
+                    Marker marker;
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+                        marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+                    }else {
+                        marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    }
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                    Log.d("markerStuff",String.valueOf(selectedMarker) +"   " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+
+                        markerList.remove(selectedMarker);
+
+                        selectedMarker = marker;
+                    }
+                }else { //end selectedMarker added code
+
+                    Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                }
+
+            }
+        }
+        addMarkersToDB(nMarkerList);
+        Log.d("markersAdded2", "finish");
+        //invisibleLayout.setVisibility(View.GONE);
+        Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
+
+        addMarkers(gaugeList,zoom);
+        invisibleLayout.setVisibility(View.GONE);
+
+    }
+
+
+
 
     private void addSingleMarker(Marker marker){
 
@@ -661,7 +872,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private MarkerOptions iconChangedOptions (MarkerOptions markerOptions, Float zoom){
 
         if(zoom > zoomLevel[0]){
-            markerOptions.icon(BitmapDescriptorFactory.defaultMarker());
+            //markerOptions.icon(BitmapDescriptorFactory.defaultMarker());
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
         }else if(zoom > zoomLevel [1] && zoom <= zoomLevel[0]){
             markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
         }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
@@ -673,6 +885,17 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
 
+    private void resetSelectedMarker(){
+
+        Gauge oldGauge = (Gauge) selectedMarker.getTag();
+        markerList.remove(selectedMarker);
+        selectedMarker.remove();
+        LatLng oldLatLng = new LatLng(oldGauge.getGaugeLatitude(),oldGauge.getGaugeLongitude());
+        Marker oldMarker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),mMap.getCameraPosition().zoom));
+        oldMarker.setTag(oldGauge);
+        markerList.add(oldMarker);
+
+    }
 
     public Bitmap resizeMapIcons(int width, int height){
 
@@ -701,12 +924,42 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         Gauge gauge = (Gauge)marker.getTag();
 
+
+
+
         searchView.clearFocus();
         if(gauge != null){
-        Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
-        LoadGauge task = new LoadGauge();
-        task.execute(gauge);
-        return false;
+            if(selectedMarker != null) {
+                if (!((Gauge) selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())) {
+                    Log.d("markerStuff7", "different Marker clicked");
+                    /*Gauge oldGauge = (Gauge) selectedMarker.getTag();
+                    markerList.remove(selectedMarker);
+                    selectedMarker.remove();
+                    LatLng oldLatLng = new LatLng(oldGauge.getGaugeLatitude(),oldGauge.getGaugeLongitude());
+                    Marker oldMarker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),mMap.getCameraPosition().zoom));
+                    oldMarker.setTag(oldGauge);
+                    markerList.add(oldMarker);*/
+                    resetSelectedMarker();
+
+
+                } else {
+                    Log.d("markerStuff7", "same Marker clicked");
+                    //do nothing
+                }
+            }
+            markerList.remove(marker);
+            marker.remove();
+            LatLng latLng = new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude());
+            Marker nMarker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
+            nMarker.setTag(gauge);
+            selectedMarker = nMarker;
+            Log.d("markerStuff2",String.valueOf(selectedMarker));
+            Log.d("markerStuff3",((Gauge)selectedMarker.getTag()).getGaugeID());
+            markerList.add(nMarker);
+            Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
+            LoadGauge task = new LoadGauge();
+            task.execute(gauge);
+            return false;
         }
         else{
             Log.d("markerClick","gauge clicked on home");
@@ -741,7 +994,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    private class LoadGauge extends AsyncTask<Gauge, Void, List<Datum>>{
+    private class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
 
 
         View loadingPanel = (View)findViewById(R.id.listLoadingPanel);
@@ -754,7 +1007,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
         @Override
-        protected List<Datum> doInBackground(Gauge... gauge){
+        protected LoadGaugeParams doInBackground(Gauge... gauge){
 
             List<Datum> gaugeData = new ArrayList<Datum>();
             try {
@@ -768,21 +1021,24 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             for(int i = 0; i <gaugeData.size(); i++){
                 Log.d("gaugedataBackground", gaugeData.get(i).getPrimary() + " " + gaugeData.get(i).getValid() + gauge[0].getGaugeName() );
             }
+            LoadGaugeParams params = new LoadGaugeParams(gaugeData,gauge[0]);
 
-            return gaugeData;
+            return params;
         }
 
-        @Override protected void onPostExecute(List<Datum> result){
+        @Override protected void onPostExecute(LoadGaugeParams result){
 
 
-            if(result.size() > 0) {
+            if(result.list.size() > 0) {
 
 
+                TextView gaugeNameText = (TextView)findViewById(R.id.gauge_name);
                 TextView waterHeight = (TextView) findViewById(R.id.water_height);
                 TextView time = (TextView) findViewById(R.id.reading_time);
-                Log.d("onPostExecute result", "valid is: " + result.get(0).getValid() + " primary is: " + result.get(0).getPrimary());
-                waterHeight.setText((result.get(0).getPrimary()) + "ft");
-                String dateString = result.get(0).getValid();
+                Log.d("onPostExecute result", "valid is: " + result.list.get(0).getValid() + " primary is: " + result.list.get(0).getPrimary());
+                gaugeNameText.setText(result.gauge.getGaugeName());
+                waterHeight.setText((result.list.get(0).getPrimary()) + "ft");
+                String dateString = result.list.get(0).getValid();
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
                 Date convertedDate = new Date();
                 try {
@@ -946,12 +1202,52 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         protected void onPostExecute(Gauge gauge){
 
             if(gauge != null) {
+
+                int a = 0;
+                if(a == 0){
+                    mMap.clear();
+                    markerList.clear();
+                    selectedMarker = null;
+                    myDBHelper.clearMarkers();
+                    Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
+                            position(myLatLng).icon(BitmapDescriptorFactory.
+                            defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                    myLocationMarker.setTag(null);
+
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude())).title(gauge.getGaugeName()));
+                    marker.setTag(gauge);
+                    selectedMarker = marker;
+                    marker.remove();
+                    selectedMarker.setTag(gauge);
+                    Log.d("markerStuff10",String.valueOf(selectedMarker) + " , " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+
+                }
+
+
+
+
                 LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
+
+
+
+
                 LoadGauge task = new LoadGauge();
                 task.execute(gauge);
             }
 
+        }
+    }
+
+    private class LoadGaugeParams{
+
+        List<Datum> list;
+        Gauge gauge;
+
+        private LoadGaugeParams(List<Datum> list,Gauge gauge){
+
+            this.list = list;
+            this.gauge = gauge;
         }
     }
 
