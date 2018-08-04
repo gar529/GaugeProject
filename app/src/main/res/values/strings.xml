@@ -5,4 +5,8 @@
     <string name="connection_error">Connection Error</string>
     <string name="xml_error">XML Error</string>
     <string name="title_activity_main_frag">Map</string>
+    <string name="minor_flooding">Minor Flooding May Have Begun</string>
+    <string name="moderate_flooding">Moderate Flooding May Have Begun</string>
+    <string name="major_flooding">Major Flooding May Have Begun</string>
+    <string name="feet_unit">ft</string>
 </resources>

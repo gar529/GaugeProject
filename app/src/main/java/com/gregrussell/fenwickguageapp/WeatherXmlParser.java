@@ -42,7 +42,7 @@ public class WeatherXmlParser {
     private List readSite(XmlPullParser parser) throws XmlPullParserException, IOException{
         List gauges = new ArrayList();
 
-        Log.d("xmlData", "readingSite");
+       // Log.d("xmlData", "readingSite");
 
 
 

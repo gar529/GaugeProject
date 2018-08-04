@@ -35,6 +35,7 @@ import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -99,6 +100,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private Marker selectedMarker;
     private ListView searchSuggestions;
     private String mCurFilter;
+    private ImageView favoriteButton;
+    private LoadGauge loadGaugeTask;
 
 
 
@@ -134,6 +137,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         throw sqle;
         }
         myDBHelper.clearMarkers();
+
+        myDBHelper.getAllFavorites();
 
 
         invisibleLayout.setVisibility(View.GONE);
@@ -199,6 +204,27 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     }
                 }
 
+            }
+        });
+
+        favoriteButton = (ImageView)findViewById(R.id.favorite_button);
+        favoriteButton.setClickable(true);
+        favoriteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(favoriteButton.isSelected()){
+                    favoriteButton.setSelected(false);
+                    Gauge gauge = (Gauge)selectedMarker.getTag();
+                    RemoveFavorite task = new RemoveFavorite();
+                    task.execute(gauge);
+                }else{
+                    favoriteButton.setSelected(true);
+                    if(selectedMarker != null){
+                        Gauge gauge = (Gauge)selectedMarker.getTag();
+                        AddFavorite task = new AddFavorite();
+                        task.execute(gauge);
+                    }
+                }
             }
         });
 
@@ -828,13 +854,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
 
-
-
-    private void addSingleMarker(Marker marker){
-
-        myDBHelper.addSingleMarker(marker);
-    }
-
     private void addMarkersToDB(List<Marker> mList){
 
         myDBHelper.addMarkers(mList);
@@ -845,29 +864,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         return myDBHelper.checkMarkerExists(identifier);
     }
 
-
-
-    private boolean containsMarker(List<Marker> list, String name){
-
-
-
-        /*for(int i = 0; i< list.size();i++){
-            Gauge g = (Gauge)list.get(i).getTag();
-            if(g.getGaugeName().equals(name)){
-                return true;
-            }
-        }
-
-        return false;*/
-
-
-        for(Marker marker: list ){
-            if(((Gauge)marker.getTag()).getGaugeName().equals(name)){
-                return true;
-            }
-        }
-        return false;
-    }
 
     private MarkerOptions iconChangedOptions (MarkerOptions markerOptions, Float zoom){
 
@@ -922,7 +918,16 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     @Override
     public boolean onMarkerClick(final Marker marker){
 
+        if(loadGaugeTask != null) {
+            if (loadGaugeTask.getStatus() == AsyncTask.Status.RUNNING || loadGaugeTask.getStatus() == AsyncTask.Status.PENDING) {
+                loadGaugeTask.cancel(true);
+                Log.d("loadGauge", "cancelled");
+            }
+        }
         Gauge gauge = (Gauge)marker.getTag();
+
+        ActivateFavoriteButton buttonTask = new ActivateFavoriteButton();
+        buttonTask.execute(gauge);
 
 
 
@@ -957,8 +962,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             Log.d("markerStuff3",((Gauge)selectedMarker.getTag()).getGaugeID());
             markerList.add(nMarker);
             Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
-            LoadGauge task = new LoadGauge();
-            task.execute(gauge);
+            loadGaugeTask = new LoadGauge();
+            loadGaugeTask.execute(gauge);
             return false;
         }
         else{
@@ -1009,36 +1014,35 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         @Override
         protected LoadGaugeParams doInBackground(Gauge... gauge){
 
-            List<Datum> gaugeData = new ArrayList<Datum>();
-            try {
-                 gaugeData = readGauge(gauge[0].getGaugeID());
-            }catch (IOException e){
-                e.printStackTrace();
-            }catch (XmlPullParserException e){
-                e.printStackTrace();
-            }
-            Log.d("gaugedata", "size is " + gaugeData.size() + " for " + gauge[0].getGaugeName());
-            for(int i = 0; i <gaugeData.size(); i++){
-                Log.d("gaugedataBackground", gaugeData.get(i).getPrimary() + " " + gaugeData.get(i).getValid() + gauge[0].getGaugeName() );
-            }
-            LoadGaugeParams params = new LoadGaugeParams(gaugeData,gauge[0]);
+
+
+            GaugeData gaugeData = new GaugeData(gauge[0].getGaugeID());
+            GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
+
+            LoadGaugeParams params = new LoadGaugeParams(gaugeReadParseObject,gauge[0]);
 
             return params;
         }
 
         @Override protected void onPostExecute(LoadGaugeParams result){
 
+            TextView gaugeNameText = (TextView)findViewById(R.id.gauge_name);
+            TextView waterHeight = (TextView) findViewById(R.id.water_height);
+            TextView time = (TextView) findViewById(R.id.reading_time);
+            TextView floodWarning = (TextView)findViewById(R.id.flood_warning);
 
-            if(result.list.size() > 0) {
+            if(result.gaugeReadParseObject.getDatumList() != null && result.gaugeReadParseObject.getDatumList().size() > 0) {
 
 
-                TextView gaugeNameText = (TextView)findViewById(R.id.gauge_name);
-                TextView waterHeight = (TextView) findViewById(R.id.water_height);
-                TextView time = (TextView) findViewById(R.id.reading_time);
-                Log.d("onPostExecute result", "valid is: " + result.list.get(0).getValid() + " primary is: " + result.list.get(0).getPrimary());
-                gaugeNameText.setText(result.gauge.getGaugeName());
-                waterHeight.setText((result.list.get(0).getPrimary()) + "ft");
-                String dateString = result.list.get(0).getValid();
+                String gaugeName = result.gauge.getGaugeName();
+                String water = result.gaugeReadParseObject.getDatumList().get(0).getPrimary() + getResources().getString(R.string.feet_unit);
+
+
+                Log.d("onPostExecute result", "valid is: " + result.gaugeReadParseObject.getDatumList().get(0).getValid() + " primary is: " + result.gaugeReadParseObject.getDatumList().get(0).getPrimary());
+                gaugeNameText.setText(gaugeName);
+                waterHeight.setText(water);
+                floodWarning.setText(getFloodWarning(result.gaugeReadParseObject.getSigstages(),result.gaugeReadParseObject.getDatumList().get(0).getPrimary()));
+                String dateString = result.gaugeReadParseObject.getDatumList().get(0).getValid();
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
                 Date convertedDate = new Date();
                 try {
@@ -1070,114 +1074,82 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 gaugeText.setVisibility(View.VISIBLE);
             }
             else{
-                TextView waterHeight = (TextView) findViewById(R.id.water_height);
-                TextView time = (TextView) findViewById(R.id.reading_time);
+                gaugeNameText.setText(result.gauge.getGaugeName());
                 waterHeight.setText("No Data Available. Gauge May Be Offline");
                 time.setText("");
                 loadingPanel.setVisibility(View.GONE);
                 gaugeText.setVisibility(View.VISIBLE);
             }
         }
-    }
 
+        private String getFloodWarning(Sigstages sigstages, String waterHeight){
 
-    private List<Datum> readGauge(String gaugeID) throws IOException, XmlPullParserException{
-        String urlString = "https://water.weather.gov/ahps2/hydrograph_to_xml.php?gage=" + gaugeID;
-        InputStream stream = null;
-        // Instantiate the parser
-        GaugeReadingXMLParser gaugeXmlParser = new GaugeReadingXMLParser();
-        List<Datum> datums = null;
-        String valid = null;
-        String primary = null;
-        String summary = null;
-        Calendar rightNow = Calendar.getInstance();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+            double minorDouble = 0.0;
+            double majorDouble = 0.0;
+            double moderateDouble = 0.0;
+            double waterDouble = 0.0;
 
+            if(sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
+                return "";
+            }else {
 
-        try {
-            stream = downloadUrl(urlString);
-            datums = gaugeXmlParser.parse(stream);
-            // Makes sure that the InputStream is closed after the app is
-            // finished using it.
-        }
-        finally {
-            if (stream != null) {
-                stream.close();
-            }
-        }
-        //Log.d("readGauge","first datum is " + datums.get(0).getPrimary());
-        return datums;
-    }
+                try {
+                    waterDouble = Double.parseDouble(waterHeight);
 
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
 
+                if(sigstages.getMajor() != null ){
 
-         // Given a string representation of a URL, sets up a connection and gets
-             // an input stream.
-         private InputStream downloadUrl(String urlString) throws IOException {
-            Log.d("urlString",urlString);
-             URL url = new URL(urlString);
-             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-             conn.setReadTimeout(10000 /* milliseconds */);
-             conn.setConnectTimeout(15000 /* milliseconds */);
-             conn.setRequestMethod("GET");
-             conn.setDoInput(true);
-             // Starts the query
-                     conn.connect();
-             return conn.getInputStream();
+                    try {
+                        majorDouble = Double.parseDouble(sigstages.getMajor());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
 
-    }
+                    if(waterDouble >= majorDouble){
+                        return getResources().getString(R.string.major_flooding);
+                    }
+                }
 
-    private Address getAddress(String zipCode){
+                if(sigstages.getModerate() !=null){
+                    try{
+                        moderateDouble = Double.parseDouble(sigstages.getModerate());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                    if(waterDouble >= moderateDouble){
+                        return getResources().getString(R.string.moderate_flooding);
+                    }
+                }
+                if(sigstages.getFlood() !=null){
 
-        Address address = null;
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-        try{
-            List<Address> addressList = geocoder.getFromLocationName(zipCode,1);
-            Log.d("address6",addressList.size() + " " + String.valueOf(addressList));
-            if(addressList.size() > 0) {
-                address = addressList.get(0);
+                    try{
+                        minorDouble = Double.parseDouble(sigstages.getFlood());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                    if(waterDouble >= minorDouble){
+                        return getResources().getString(R.string.minor_flooding);
+                    }
+                }
+
 
             }
-        }catch (IOException e){
-            e.printStackTrace();
-        }
+            return "";
 
-        return address;
-    }
-
-    private class AddMarkerAsync extends AsyncTask<AddMarkerParams,Void,AddMarkerParams>{
-
-        @Override
-        protected void onPreExecute(){
-            invisibleLayout.setVisibility(View.VISIBLE);
-        }
-        @Override
-        protected AddMarkerParams doInBackground(AddMarkerParams... params){
-
-            long currentTime = System.currentTimeMillis();
-            long futureTime = currentTime + 200;
-            while(System.currentTimeMillis() < futureTime){
-
-            }
-
-            return params[0];
-        }
-        @Override
-        protected void onPostExecute(AddMarkerParams result){
-            addMarkers(result.gaugeList,result.zoom);
-            invisibleLayout.setVisibility(View.GONE);
         }
     }
 
-    private static class AddMarkerParams{
-        List<Gauge> gaugeList;
-        Float zoom;
 
-        private AddMarkerParams(List<Gauge>gaugeList, Float zoom){
-            this.gaugeList = gaugeList;
-            this.zoom = zoom;
-        }
-    }
+
+
+
+
+
+
+
 
 
     private class MoveToLocation extends AsyncTask<String,Void,Gauge>{
@@ -1241,13 +1213,74 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     private class LoadGaugeParams{
 
-        List<Datum> list;
+        GaugeReadParseObject gaugeReadParseObject;
         Gauge gauge;
 
-        private LoadGaugeParams(List<Datum> list,Gauge gauge){
+        private LoadGaugeParams(GaugeReadParseObject gaugeReadParseObject,Gauge gauge){
 
-            this.list = list;
+            this.gaugeReadParseObject = gaugeReadParseObject;
             this.gauge = gauge;
+        }
+    }
+
+    private class AddFavorite extends AsyncTask<Gauge,Void,Gauge>{
+
+        @Override
+        protected Gauge doInBackground(Gauge... params){
+
+            myDBHelper.addFavorite(params[0]);
+            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
+            return params[0];
+        }
+
+        @Override
+        protected void onPostExecute(Gauge result){
+            String toastText =result.getGaugeName() + " added to favorites";
+            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    }
+
+
+    private class RemoveFavorite extends AsyncTask<Gauge,Void,Gauge>{
+
+        @Override
+        protected Gauge doInBackground(Gauge... params){
+
+            myDBHelper.removeFavorite(params[0]);
+            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
+            return params[0];
+        }
+
+        @Override
+        protected void onPostExecute(Gauge result){
+            String toastText = result.getGaugeName() + " removed from favorites";
+            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            toast.show();
+
+        }
+    }
+
+    private class ActivateFavoriteButton extends AsyncTask<Gauge, Void, Boolean>{
+
+        @Override
+        protected Boolean doInBackground(Gauge... params){
+            if(myDBHelper.isFavorite(params[0])){
+                return true;
+            }else {
+                return false;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result){
+
+            if(result){
+                favoriteButton.setSelected(true);
+            }else{
+                favoriteButton.setSelected(false);
+            }
+
         }
     }
 

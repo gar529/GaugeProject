@@ -379,8 +379,8 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
         List<Gauge> gaugeList = new ArrayList<Gauge>();
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT * FROM " + Gauges.TABLE_NAME;
-        Cursor cursor = db.rawQuery(query,null);
+        String query = "SELECT * FROM " + Gauges.TABLE_NAME + " WHERE " + Gauges.COLUMN_ACTIVE + " = ?";
+        Cursor cursor = db.rawQuery(query,new String[] {"1"});
         if(cursor.moveToFirst()){
             do{
                 Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
@@ -475,6 +475,108 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Gauge gauge = new Gauge(url,name,id,lat,lon,address);
 
         return gauge;
+
+
+    }
+
+    public long addFavorite(Gauge gauge){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        long row = 0;
+        try{
+            db.beginTransaction();
+            String query = "INSERT INTO " + Favorites.TABLE_NAME + " (" + Favorites.COLUMN_IDENTIFIER + ") VALUES (?)";
+            SQLiteStatement statement = db.compileStatement(query);
+            statement.bindString(1,gauge.getGaugeID());
+            row = statement.executeInsert();
+            db.setTransactionSuccessful();
+        }catch (SQLiteException e){
+            e.printStackTrace();
+        }finally {
+            db.endTransaction();
+
+        }
+        return row;
+    }
+
+    public void removeFavorite(Gauge gauge){
+
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        try{
+            db.beginTransaction();
+            String query = "DELETE FROM " + Favorites.TABLE_NAME + " WHERE " + Favorites.COLUMN_IDENTIFIER + " LIKE ?";
+            SQLiteStatement statement = db.compileStatement(query);
+            statement.bindString(1,gauge.getGaugeID());
+            statement.executeUpdateDelete();
+            db.setTransactionSuccessful();
+        }catch (SQLiteException e){
+            e.printStackTrace();
+        }finally {
+            db.endTransaction();
+        }
+    }
+
+    public boolean isFavorite(Gauge gauge){
+
+        Log.d("isFavorite",gauge.getGaugeID());
+        String idInTable;
+        SQLiteDatabase db = this.getReadableDatabase();
+        try{
+            db.beginTransaction();
+            String query = "SELECT * FROM " + Favorites.TABLE_NAME +
+                    " WHERE " + Favorites.COLUMN_IDENTIFIER + " LIKE ?";
+            SQLiteStatement statement = db.compileStatement(query);
+            statement.bindString(1,gauge.getGaugeID());
+            idInTable = statement.simpleQueryForString();
+            Log.d("isFavorite2",idInTable);
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }finally {
+            db.endTransaction();
+        }
+        if(idInTable != null){
+            return true;
+        }else {
+            return false;
+        }
+
+
+    }
+
+    public int getFavoritesCount(){
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Favorites.TABLE_NAME;
+        Cursor cursor = db.rawQuery(query,null);
+        int count = cursor.getCount();
+        cursor.close();
+        return count;
+    }
+
+    public List<Gauge> getAllFavorites(){
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Gauges.TABLE_NAME + " WHERE " + Gauges.COLUMN_IDENTIFIER + " IN ( SELECT " + Favorites.COLUMN_IDENTIFIER + " FROM " + Favorites.TABLE_NAME + ")";
+        Cursor cursor = db.rawQuery(query,null);
+        Log.d("getAllFavorites","favorites size: " + cursor.getCount());
+        List <Gauge> list = new ArrayList<Gauge>();
+
+        if(cursor.moveToFirst()){
+            do{
+                Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
+                        cursor.getString(Constants.GAUGES_NAME_POSITION),
+                        cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
+                        cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
+                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
+                list.add(gauge);
+            }while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        return list;
 
 
     }
