@@ -3,7 +3,7 @@ package com.gregrussell.fenwickguageapp;
 import android.location.Location;
 import android.util.Log;
 
-import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
+
 
 import java.util.ArrayList;
 import java.util.Collections;
