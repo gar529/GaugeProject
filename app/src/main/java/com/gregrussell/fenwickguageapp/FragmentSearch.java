@@ -24,7 +24,6 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;

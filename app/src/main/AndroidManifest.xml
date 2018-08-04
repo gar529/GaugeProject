@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:allowBackup="true"
@@ -44,6 +45,18 @@
         <activity android:name=".SearchableActivity">
 
         </activity>
+
+        <receiver android:name=".AlarmReceiver">
+            <intent-filter>
+                <action android:name="com.gregrussell.fenwickguageapp.SEND_BROADCAST"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".StartAlarmAtBoot">
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
         <provider
             android:authorities="com.gregrussell.fenwickgaugeapp.SearchContentProvider"
             android:name="com.gregrussell.fenwickguageapp.SearchContentProvider"/>

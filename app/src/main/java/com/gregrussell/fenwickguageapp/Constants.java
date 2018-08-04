@@ -21,4 +21,8 @@ public class Constants {
     public static final int MARKERS_ID_POSITION = 0;
     public static final int MARKERS_NAME_POSITION = 1;
 
+    public static final int FIFTEEN_MINUTES_MILLIS = 1000 * 60 * 15;
+    public static final int LOWER_BOUND_MILLIS = 1000 * 60 * 12;
+    public static final int UPPER_BOUND_MILLIS = 1000 * 60 * 17;
+
 }

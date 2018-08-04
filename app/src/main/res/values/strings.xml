@@ -5,8 +5,16 @@
     <string name="connection_error">Connection Error</string>
     <string name="xml_error">XML Error</string>
     <string name="title_activity_main_frag">Map</string>
-    <string name="minor_flooding">Minor Flooding May Have Begun</string>
-    <string name="moderate_flooding">Moderate Flooding May Have Begun</string>
-    <string name="major_flooding">Major Flooding May Have Begun</string>
+    <string name="minor_flooding">Minor flooding may have begun</string>
+    <string name="moderate_flooding">Moderate flooding may have begun</string>
+    <string name="major_flooding">Major flooding may have begun</string>
     <string name="feet_unit">ft</string>
+    <string name="minor_warning">Minor Flood Warning</string>
+    <string name="moderate_warning">Moderate Flood Warning</string>
+    <string name="major_warning">Major Flood Warning</string>
+    <string name="flood_warning">Flood Warning</string>
+    <string name="multi_flood_warning">Multiple waterways have reached flood stage. Flooding may have begun</string>
+    <string name="channel_name">Flood Alerts</string>
+    <string name="channel_description">Make sound and pop on screen</string>
+
 </resources>

@@ -12,7 +12,6 @@ import android.widget.BaseAdapter;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
 
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -245,8 +244,8 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             Datum datum = new Datum();
             String waterHeight = "";
             String primary =  "";
-            Log.d("favoriteShit1",String.valueOf(gaugeReadParseObject));
-            Log.d("favoriteShit2",String.valueOf(gaugeReadParseObject.getDatumList()));
+            Log.d("favoriteS1",String.valueOf(gaugeReadParseObject));
+            Log.d("favoriteS2",String.valueOf(gaugeReadParseObject.getDatumList()));
             if(gaugeReadParseObject.getDatumList() != null) {
                 if (gaugeReadParseObject.getDatumList().size() > 0) {
 

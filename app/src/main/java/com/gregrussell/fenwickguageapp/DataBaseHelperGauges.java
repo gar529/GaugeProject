@@ -17,7 +17,7 @@ import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.Marker;
-import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
+
 
 import java.io.IOException;
 import java.util.ArrayList;

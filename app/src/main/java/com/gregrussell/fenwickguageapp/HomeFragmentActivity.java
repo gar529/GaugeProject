@@ -1,7 +1,13 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.SQLException;
@@ -9,7 +15,9 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -24,7 +32,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
-import com.gregrussell.fenwickguageapp.WeatherXmlParser.Gauge;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -39,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 public class HomeFragmentActivity extends FragmentActivity {
 
@@ -53,6 +61,7 @@ public class HomeFragmentActivity extends FragmentActivity {
     // Whether there is a mobile connection.
     private static boolean mobileConnected = false;
     private static Context mContext;
+    public static final String CHANNEL_ID = "Default";
 
 
     @Override
@@ -86,6 +95,31 @@ public class HomeFragmentActivity extends FragmentActivity {
         sPref = sharedPrefs.getString("listPref", ANY);
         Log.d("shared",sPref);
         updateConnectedFlags();
+
+        ComponentName receiver = new ComponentName(this, StartAlarmAtBoot.class);
+        PackageManager pm = this.getPackageManager();
+
+        pm.setComponentEnabledSetting(receiver,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP);
+
+        createNotificationChannel();
+
+        AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this,AlarmReceiver.class);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(this,0,intent,0);
+        intent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
+
+        if(Build.VERSION.SDK_INT >= 23) {
+            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else{
+            Random random = new Random();
+            int randomTimeMillis = random.nextInt(Constants.UPPER_BOUND_MILLIS - Constants.LOWER_BOUND_MILLIS) + Constants.LOWER_BOUND_MILLIS;
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
+        }
+
 
         Log.d("mobileConnected",String.valueOf(mobileConnected));
         Log.d("wifiConnected",String.valueOf(wifiConnected));
@@ -377,6 +411,22 @@ public class HomeFragmentActivity extends FragmentActivity {
             // Starts the query
             conn.connect();
             return conn.getInputStream();
+        }
+    }
+
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
         }
     }
 
