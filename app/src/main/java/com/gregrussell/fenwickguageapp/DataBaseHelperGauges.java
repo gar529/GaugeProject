@@ -26,7 +26,7 @@ import java.util.Locale;
 
 public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
-    public static final int DATABASE_VERSION = 3;
+    public static final int DATABASE_VERSION = 4;
     public static final String DATABASE_PATH = "/data/data/com.gregrussell.fenwickguageapp/databases/";
     public static final String DATABASE_NAME = "gauges.db";
     private static Context mContext;
@@ -51,6 +51,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         public static final String TABLE_NAME = "favorites";
         public static final String COLUMN_ID = "favorite_id";
         public static final String COLUMN_IDENTIFIER = "gauge_identifier";
+        public static final String COLUMN_NOTIFICATION = "favorite_notification";
         public static final String COLUMN_ACTIVE = "favorite_active";
         public static final String COLUMN_TIMESTAMP = "favorite_timestamp";
     }
@@ -84,7 +85,8 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             Favorites.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
             Favorites.COLUMN_IDENTIFIER +
             " TEXT UNIQUE, " +
-            Favorites.COLUMN_ACTIVE + " TEXT, " +
+            Favorites.COLUMN_NOTIFICATION + " NOT NULL DEFAULT 1," +
+            Favorites.COLUMN_ACTIVE + " NOT NULL DEFAULT 1, " +
             Favorites.COLUMN_TIMESTAMP + " INTEGER, FOREIGN KEY(" +
             Favorites.COLUMN_IDENTIFIER +") REFERENCES " +
             Gauges.TABLE_NAME + "(" + Gauges.COLUMN_IDENTIFIER + "))";
@@ -485,9 +487,10 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         long row = 0;
         try{
             db.beginTransaction();
-            String query = "INSERT INTO " + Favorites.TABLE_NAME + " (" + Favorites.COLUMN_IDENTIFIER + ") VALUES (?)";
+            String query = "INSERT INTO " + Favorites.TABLE_NAME + " (" + Favorites.COLUMN_IDENTIFIER + ", " + Favorites.COLUMN_TIMESTAMP + ") VALUES (?,?)";
             SQLiteStatement statement = db.compileStatement(query);
             statement.bindString(1,gauge.getGaugeID());
+            statement.bindLong(2,System.currentTimeMillis());
             row = statement.executeInsert();
             db.setTransactionSuccessful();
         }catch (SQLiteException e){
@@ -578,6 +581,67 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
         return list;
 
+
+    }
+
+
+    public List<Gauge> getNotifiableFavorites(){
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Gauges.TABLE_NAME + " WHERE " + Gauges.COLUMN_IDENTIFIER + " IN ( SELECT " + Favorites.COLUMN_IDENTIFIER + " FROM " + Favorites.TABLE_NAME + " WHERE " + Favorites.COLUMN_NOTIFICATION + " = " + 1+")";
+        Cursor cursor = db.rawQuery(query,null);
+        Log.d("getNotifiableFavorites","favorites size: " + cursor.getCount());
+        List <Gauge> list = new ArrayList<Gauge>();
+
+        if(cursor.moveToFirst()){
+            do{
+                Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
+                        cursor.getString(Constants.GAUGES_NAME_POSITION),
+                        cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
+                        cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
+                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
+                list.add(gauge);
+            }while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        return list;
+
+
+    }
+
+    public int getFavoriteNotificationState(Gauge gauge){
+
+        int notification = 1;
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Favorites.TABLE_NAME + " WHERE " + Favorites.COLUMN_IDENTIFIER + " LIKE ?";
+
+        Cursor cursor = db.rawQuery(query,new String[]{gauge.getGaugeID()});
+        cursor.moveToFirst();
+        try{
+            notification = cursor.getInt(Constants.FAVORITES_NOTIFICATION_POSITION);
+        }catch (SQLiteException e){
+            e.printStackTrace();
+        }
+
+        return notification;
+    }
+
+    public void changeFavoriteNotificationState(Gauge gauge, boolean checked){
+
+        int notification;
+        if(checked){
+            notification = 1;
+        }else{
+            notification = 0;
+        }
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(Favorites.COLUMN_NOTIFICATION,notification);
+        String selection = Favorites.COLUMN_IDENTIFIER + " LIKE ?";
+        db.update(Favorites.TABLE_NAME,values,selection,new String[]{gauge.getGaugeID()});
 
     }
 

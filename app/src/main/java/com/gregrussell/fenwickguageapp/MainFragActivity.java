@@ -1,13 +1,21 @@
 package com.gregrussell.fenwickguageapp;
 
+import android.Manifest;
+import android.app.AlarmManager;
 import android.app.Fragment;
 import android.app.LoaderManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.SearchManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.CursorLoader;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.SQLException;
@@ -21,16 +29,24 @@ import android.graphics.drawable.LevelListDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -48,6 +64,9 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -57,6 +76,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -73,6 +93,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.TimeZone;
 
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
@@ -83,7 +104,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     List<Gauge> allGauges;
     LinearLayout gaugeDataLayout;
     private int distanceAway;
-    private Location location;
+    //private Location location;
     private Context mContext;
     private List<Marker> markerList;
     private float zoomLevel[] = {11,10,8,7,0};
@@ -103,9 +124,23 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private ImageView favoriteButton;
     private LoadGauge loadGaugeTask;
 
+    public static final String WIFI = "Wi-fi";
+    public static final String ANY = "Any";
+    private static final String MY_URL = "https://raw.githubusercontent.com/gar529/GaugeProject/master/GaugeProject/xmlData.xml";
+    private static final int MY_PERMISSIONS_REQUEST_LOCATION = 0;
+    private static Location homeLocation;
+    public static String sPref = null;
+    // Whether there is a Wi-Fi connection.
+    private static boolean wifiConnected = true;
+    // Whether there is a mobile connection.
+    private static boolean mobileConnected = false;
+    public static final String CHANNEL_ID = "Flood Warning";
+
 
     @Override
     public void onBackPressed(){
+
+        Log.d("backpressed",String.valueOf(getSupportFragmentManager().findFragmentByTag("favorite_fragment")));
 
         if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null) {
             if (gaugeDataLayout.getVisibility() == View.VISIBLE) {
@@ -130,6 +165,45 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Do the
+                    // contacts-related task you need to do.
+                    getMyLocation();
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+
+
+
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setMessage(R.string.permission_dialog_message)
+                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+
+                                    getMyLocation();
+                                }
+                            });
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                }
+
+
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request.
+        }
+    }
+
 
 
 
@@ -142,14 +216,54 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         mContext = this;
 
+        String s = getIntent().getStringExtra("notification");
+        Log.d("intent41",String.valueOf(s));
+        if(getIntent().getStringExtra("notification") !=null){
+
+            Log.d("intent40","from notification");
+
+        }
+
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        sPref = sharedPrefs.getString("listPref", ANY);
+        Log.d("shared",sPref);
+        updateConnectedFlags();
+
+        ComponentName receiver = new ComponentName(this, StartAlarmAtBoot.class);
+        PackageManager pm = this.getPackageManager();
+
+        pm.setComponentEnabledSetting(receiver,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP);
+
+        createNotificationChannel();
+
+        AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this,AlarmReceiver.class);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(this,0,intent,0);
+        intent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
+
+        if(Build.VERSION.SDK_INT >= 23) {
+            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else{
+            Random random = new Random();
+            int randomTimeMillis = random.nextInt(Constants.UPPER_BOUND_MILLIS - Constants.LOWER_BOUND_MILLIS) + Constants.LOWER_BOUND_MILLIS;
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
+        }
+
+        getLocationPermission();
+
 
 
 
 
         //myList = (ArrayList<Gauge>)getIntent().getSerializableExtra("LIST_OF_RESULTS");
-        distanceAway = getIntent().getIntExtra("DISTANCE",5);
-        location = getIntent().getParcelableExtra("MY_LOCATION");
-        previousLocation = location;
+        //distanceAway = getIntent().getIntExtra("DISTANCE",5);
+        //location = getIntent().getParcelableExtra("MY_LOCATION");
+
         invisibleLayout = (RelativeLayout) findViewById(R.id.invisible_layout);
 
 
@@ -165,9 +279,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }catch (SQLException sqle){
         throw sqle;
         }
-        myDBHelper.clearMarkers();
 
-        myDBHelper.getAllFavorites();
+
 
 
         invisibleLayout.setVisibility(View.GONE);
@@ -304,9 +417,11 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         Log.d("searchView3", "adapter empty? " + mAdapter.isEmpty());
 
+        myDBHelper.clearMarkers();
 
-        GetGauges task = new GetGauges();
-        task.execute();
+
+
+
 
     }
 
@@ -322,30 +437,156 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         handleIntent(intent);
     }
 
+    private void getLocationPermission() {
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.d("locations8", "permission not granted");
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                getMyLocation();
+            } else {
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+            }
+        }else {
+            getMyLocation();
+        }
+    }
+
+    private void getMyLocation(){
+        final FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        //mFusedLocationClient.setMockLocation(loc);
+
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
+
+        }else {
+            Log.d("locations9", "permission granted");
+
+            mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+                    Log.d("location5", "logging");
+                    if (location != null) {
+                        //do location stuff
+
+                        Calendar calendar = Calendar.getInstance();
+                        Date date = new Date();
+                        date.setTime(location.getTime());
+
+
+                        Log.d("location1", String.valueOf(date));
+                        long myTime = calendar.getTimeInMillis();
+                        long currentTime = 0;
+
+                        Log.d("location10", String.valueOf(date));
+                        homeLocation = location;
+
+                        //loadPage();
+                        //runGeo(location);
+
+
+                    } else {
+                        Log.d("location2", String.valueOf(location));
+                    }
+                }
+            });
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
+        }
+
+
+
+    }
+
+    public void updateConnectedFlags() {
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        NetworkInfo activeInfo = connMgr.getActiveNetworkInfo();
+        if (activeInfo != null && activeInfo.isConnected()) {
+            wifiConnected = activeInfo.getType() == ConnectivityManager.TYPE_WIFI;
+            mobileConnected = activeInfo.getType() == ConnectivityManager.TYPE_MOBILE;
+        } else {
+            wifiConnected = false;
+            mobileConnected = false;
+        }
+    }
+
     private void handleIntent(Intent intent){
-        if(Intent.ACTION_SEARCH.equals(intent.getAction())){
-            String query = intent.getStringExtra(SearchManager.QUERY);
-            Log.d("intent7","search query: " + query);
-            search(query);
-            searchView.clearFocus();
-            searchSuggestions.setAdapter(null);
 
-        }else if(Intent.ACTION_VIEW.equals(intent.getAction())){
-            Uri data = intent.getData();
-            Log.d("intent1",data.getLastPathSegment());
-        }else{
-            String dataString = intent.getStringExtra("DATA");
-            if(dataString != null){
-                Log.d("intent20", dataString);
+        if(intent.getStringExtra("notification") != null){
+            Log.d("intent30","from notification");
 
-                MoveToLocation task = new MoveToLocation();
-                task.execute(dataString);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+
+            if(fragmentManager.findFragmentByTag("favorite_fragment") != null ){
+                fragmentManager.beginTransaction().remove(fragmentManager.findFragmentByTag("favorite_fragment")).commit();
+                fragmentManager.popBackStack();
+
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
+                fragmentTransaction.commit();
 
             }else {
-                Log.d("intent21",String.valueOf(dataString));
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
+                fragmentTransaction.commit();
+            }
+
+        }else {
+            if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+                String query = intent.getStringExtra(SearchManager.QUERY);
+                Log.d("intent7", "search query: " + query);
+                search(query);
+                searchView.clearFocus();
+                searchSuggestions.setAdapter(null);
+
+            } else if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+                Uri data = intent.getData();
+                Log.d("intent1", data.getLastPathSegment());
+            } else {
+                String dataString = intent.getStringExtra("DATA");
+                if (dataString != null) {
+                    Log.d("intent20", dataString);
+
+                    MoveToLocation task = new MoveToLocation();
+                    task.execute(dataString);
+
+                } else {
+                    Log.d("intent21", String.valueOf(dataString));
+                }
             }
         }
     }
+
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            channel.setDescription(description);
+            channel.setVibrationPattern(new long[]{1000, 1000, 1000});
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
 
 
 
@@ -457,6 +698,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     @Override public boolean onQueryTextSubmit(String query) {
         // Don't care about this.
+        search(query);
         return true;
     }
 
@@ -491,7 +733,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
         // Add a marker in Sydney and move the camera
-        myLatLng = new LatLng(location.getLatitude(),location.getLongitude());
+        myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
         //LatLng farthestLocation = new LatLng(38.830833,-77.134722);
 
         LatLng sydney = new LatLng(-34, 151);
@@ -1023,8 +1265,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         @Override
         protected List<Gauge> doInBackground(Void... params){
 
+            Log.d("getGauges",String.valueOf(homeLocation));
             allGauges = getAllGauges();
-            GetLocations gl = new GetLocations(location,allGauges);
+            GetLocations gl = new GetLocations(homeLocation,allGauges);
             return gl.getClosestGauges(250);
         }
         @Override
@@ -1127,7 +1370,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
             else{
                 gaugeNameText.setText(result.gauge.getGaugeName());
-                waterHeight.setText("No Data Available. Gauge May Be Offline");
+                waterHeight.setText(getResources().getString(R.string.no_data));
+                waterHeight.setTextSize(TypedValue.COMPLEX_UNIT_SP,18);
                 time.setText("");
                 loadingPanel.setVisibility(View.GONE);
                 gaugeText.setVisibility(View.VISIBLE);
@@ -1339,6 +1583,210 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         }
     }
+
+    private class OpenDataBaseTask extends AsyncTask<Void,Void,Location>{
+
+        @Override
+        protected Location doInBackground(Void...params){
+
+            List<Gauge> gaugeList = new ArrayList<Gauge>();
+            int xmlVersion = checkXMLVersion();
+            int dbVersion = checkDataBaseVersion();
+            if(xmlVersion == -1){
+                //could not obtain xml Version
+            }
+            if(dbVersion != xmlVersion){
+                //get xml data and add to database
+                Log.d("versionCheck1","versions don't match");
+                Log.d("versionCheck2",String.valueOf(xmlVersion) + " " + String.valueOf(dbVersion));
+                try {
+                    gaugeList = downloadXML();
+                    addGaugesToDB(gaugeList,xmlVersion);
+
+                    //add gauges to database
+                }catch (IOException e){
+
+                }catch (XmlPullParserException e){
+
+                }
+            }else{
+                //everything is good
+                Log.d("versionCheck3","versions match");
+            }
+            return homeLocation;
+        }
+
+        @Override
+        protected void onPostExecute(Location result){
+
+
+            Location location = new Location("");
+            Bundle bundle = new Bundle();
+            if(result == null){
+                location.setLatitude(38.904722);
+                location.setLongitude(-77.016389);
+            }else{
+                location = result;
+            }
+
+
+            if(homeLocation == null){
+                distanceAway = 20;
+            }else{
+                distanceAway = 5;
+            }
+
+
+            previousLocation = homeLocation;
+            GetGauges task = new GetGauges();
+            task.execute();
+
+
+            //switch to launching to mapFragment, commenting below out
+            /*bundle.putParcelable("MY_LOCATION",location);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            FragmentHome fragmentHome = new FragmentHome();
+            fragmentHome.setArguments(bundle);
+            fragmentTransaction.add(R.id.home_fragment_container, fragmentHome, "home_fragment");
+            fragmentTransaction.commit();*/
+
+
+
+        }
+
+        private int checkDataBaseVersion(){
+
+            int dataBaseVersion = 0;
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+
+            }
+            return myDBHelper.getDataVersion();
+        }
+
+        private int checkXMLVersion(){
+
+            int xmlVersion = -1;
+            Log.d("Location20", "checking xml version");
+            Log.d("location30",sPref + " " + ANY);
+            Log.d("location31",String.valueOf(sPref.equals(ANY)));
+            Log.d("location32",sPref + " " + WIFI);
+            Log.d("location33",String.valueOf(sPref.equals(WIFI)));
+            if((sPref.equals(ANY)) && (wifiConnected || mobileConnected)) {
+                //new DownloadXmlTask().execute(MY_URL);
+                try {
+                    Log.d("location34","checking version");
+                    xmlVersion = checkVersion(MY_URL);
+                }catch (IOException e){
+
+                }catch (XmlPullParserException e){
+
+                }
+            }
+            else if ((sPref.equals(WIFI)) && (wifiConnected)) {
+                //new DownloadXmlTask().execute(MY_URL);
+                try {
+                    Log.d("location35","checking version");
+                    xmlVersion = checkVersion(MY_URL);
+                }catch (IOException e){
+
+                }catch (XmlPullParserException e){
+
+                }
+            } else {
+                Log.d("location 21", "error, no data available");
+                // new DownloadXmlTask().execute(MY_URL);
+            }
+            Log.d("location36", String.valueOf(xmlVersion));
+            return xmlVersion;
+        }
+
+
+        private List<Gauge> downloadXML() throws XmlPullParserException, IOException {
+
+            Log.d("downloadXML1","Start");
+            InputStream stream = null;
+            // Instantiate the parser
+            WeatherXmlParser weatherXmlParser = new WeatherXmlParser();
+            List<Gauge> gaugeList = null;
+
+            try {
+                stream = downloadUrl(MY_URL);
+                gaugeList = weatherXmlParser.parse(stream);
+                // Makes sure that the InputStream is closed after the app is
+                // finished using it.
+            } finally {
+                if (stream != null) {
+                    stream.close();
+                }
+            }
+            Log.d("downloadXML2","Finish, gauge list size: " + gaugeList.size());
+            return gaugeList;
+        }
+
+        private void addGaugesToDB(List<Gauge> gaugeList, int version){
+
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+
+            myDBHelper.addGauges(gaugeList,version);
+
+        }
+
+        private int checkVersion(String urlString)throws XmlPullParserException, IOException{
+
+            Log.d("location15","checking version");
+            InputStream stream = null;
+            CheckXMLVersion checkVersion = new CheckXMLVersion();
+            int version = 0;
+            try {
+                stream = downloadUrl(urlString);
+                version = checkVersion.parse(stream);
+                // Makes sure that the InputStream is closed after the app is
+                // finished using it.
+            } finally {
+                if (stream != null) {
+                    stream.close();
+                }
+            }
+            Log.d("location17",String.valueOf(version));
+            return version;
+
+        }
+
+        private InputStream downloadUrl(String urlString) throws IOException {
+            URL url = new URL(urlString);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setReadTimeout(10000 /* milliseconds */);
+            conn.setConnectTimeout(15000 /* milliseconds */);
+            conn.setRequestMethod("GET");
+            conn.setDoInput(true);
+            // Starts the query
+            conn.connect();
+            return conn.getInputStream();
+        }
+    }
+
 
 
 }

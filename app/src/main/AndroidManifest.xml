@@ -25,6 +25,11 @@
             android:launchMode="singleTop"
             android:label="@string/title_activity_main_frag">
             <intent-filter>
+
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+
                 <action android:name="android.intent.action.SEARCH"/>
             </intent-filter>
             <meta-data android:name="android.app.searchable"
@@ -37,11 +42,7 @@
 
         </activity>
         <activity android:name=".HomeFragmentActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity android:name=".SearchableActivity">
 

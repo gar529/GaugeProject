@@ -4,13 +4,17 @@ import android.app.Activity;
 import android.content.Context;
 import android.database.SQLException;
 import android.os.AsyncTask;
+import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.CompoundButton;
 import android.widget.RelativeLayout;
+import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import org.xmlpull.v1.XmlPullParserException;
@@ -38,6 +42,8 @@ public class FavoritesListViewAdapter extends BaseAdapter {
     private TextView dateTextView;
     private RelativeLayout loadingPanel;
     private boolean background;
+    private DataBaseHelperGauges myDBHelper;
+    private Switch notificationSwitch;
 
     public FavoritesListViewAdapter(Context mContext, List<Gauge> gaugeList){
 
@@ -73,7 +79,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             currentView = inflater.inflate(R.layout.favorite_list_layout,parent,false);
         }
 
-        DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+        myDBHelper = new DataBaseHelperGauges(mContext);
         try{
             myDBHelper.createDataBase();
 
@@ -270,12 +276,14 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
             Log.d("FavoritesAdapter14",waterHeight);
 
+            int notification = myDBHelper.getFavoriteNotificationState(gauge);
 
 
-            return new FavoriteParams(gaugeName,date,waterHeight,gaugeAddress,floodWarning);
+
+            return new FavoriteParams(gaugeName,date,waterHeight,gaugeAddress,floodWarning, gauge, notification);
         }
         @Override
-        protected void onPostExecute(FavoriteParams params){
+        protected void onPostExecute(final FavoriteParams params){
 
             loadingPanel = (RelativeLayout)view.findViewById(R.id.favorite_list_loading_panel);
             gaugeNameTextView = (TextView)view.findViewById(R.id.favorite_gauge_name);
@@ -283,6 +291,36 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             floodWarningTextView = (TextView)view.findViewById(R.id.favorite_flood_warning);
             dateTextView = (TextView)view.findViewById(R.id.favorite_time);
             waterHeightTextView = (TextView)view.findViewById(R.id.favorite_water_height);
+            notificationSwitch = (Switch)view.findViewById(R.id.favorite_notification_switch);
+
+            if(NotificationManagerCompat.from(mContext).areNotificationsEnabled()) {
+                if (params.notification == 0) {
+                    notificationSwitch.setChecked(false);
+                } else {
+                    notificationSwitch.setChecked(true);
+                }
+
+                notificationSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+                        Log.d("switchButton", checked + " " + params.gaugeName);
+                        myDBHelper.changeFavoriteNotificationState(params.gauge, checked);
+                        if (checked) {
+                            CharSequence text = "Receiving Notifications";
+                            Toast toast = Toast.makeText(mContext, text, Toast.LENGTH_SHORT);
+                            toast.show();
+                        } else {
+                            CharSequence text = "Notifications Off";
+                            Toast toast = Toast.makeText(mContext, text, Toast.LENGTH_SHORT);
+                            toast.show();
+                        }
+                    }
+                });
+            }else{
+                notificationSwitch.setChecked(false);
+                notificationSwitch.setEnabled(false);
+            }
+
 
 
             Log.d("FavoritesAdapter15",String.valueOf(gaugeNameTextView));
@@ -314,14 +352,18 @@ public class FavoritesListViewAdapter extends BaseAdapter {
     private class FavoriteParams{
 
         String gaugeName, date,waterHeight, gaugeAddress, floodWarning;
+        Gauge gauge;
+        int notification;
 
-        private FavoriteParams(String gaugeName, String date, String waterHeight, String gaugeAddress, String floodWarning){
+        private FavoriteParams(String gaugeName, String date, String waterHeight, String gaugeAddress, String floodWarning, Gauge gauge, int notification){
 
             this.gaugeName = gaugeName;
             this.date = date;
             this.gaugeAddress = gaugeAddress;
             this.floodWarning = floodWarning;
             this.waterHeight = waterHeight;
+            this.gauge = gauge;
+            this.notification = notification;
         }
 
     }

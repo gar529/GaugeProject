@@ -152,6 +152,11 @@ public class AlarmReceiver extends BroadcastReceiver {
             }
 
             CharSequence text = floodedGauge.name + " reached a stage of " + floodedGauge.stage + " at " + floodedGauge.time + "." + floodWarning;
+
+            Intent intent = new Intent(mContext, MainFragActivity.class);
+            intent.putExtra("notification","notification");
+            PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
             NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, HomeFragmentActivity.CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(text)
@@ -160,9 +165,11 @@ public class AlarmReceiver extends BroadcastReceiver {
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setAutoCancel(true)
                     .setSound(soundUri)
+                    .setContentIntent(pendingIntent)
                     .setVibrate(new long[]{1000, 1000, 1000});
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
             notificationManager.notify(0, mBuilder.build());
+
 
         }
 
@@ -174,8 +181,10 @@ public class AlarmReceiver extends BroadcastReceiver {
             for(int i =0; i< list.size();i++){
 
                 String primary = "";
-                if(list.get(i).getDatumList().size() > 0){
-                    primary = list.get(i).getDatumList().get(0).getPrimary();
+                if(list.get(i).getDatumList() != null) {
+                    if (list.get(i).getDatumList().size() > 0) {
+                        primary = list.get(i).getDatumList().get(0).getPrimary();
+                    }
                 }
                 int floodWarning = getFloodWarning(list.get(i).getSigstages(),primary);
                 if(floodWarning > 0){
@@ -305,7 +314,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             }catch (SQLException sqle){
                 throw sqle;
             }
-            return myDBHelper.getAllFavorites();
+            return myDBHelper.getNotifiableFavorites();
 
         }
 

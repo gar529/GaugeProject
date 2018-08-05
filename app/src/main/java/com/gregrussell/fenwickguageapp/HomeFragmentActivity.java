@@ -66,12 +66,11 @@ public class HomeFragmentActivity extends FragmentActivity {
     // Whether there is a mobile connection.
     private static boolean mobileConnected = false;
     private static Context mContext;
-    public static final String CHANNEL_ID = "Default";
+    public static final String CHANNEL_ID = "Flood Warning";
 
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
                 // If request is cancelled, the result arrays are empty.
@@ -453,7 +452,10 @@ public class HomeFragmentActivity extends FragmentActivity {
             String description = getString(R.string.channel_description);
             int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.enableLights(true);
+            channel.enableVibration(true);
             channel.setDescription(description);
+            channel.setVibrationPattern(new long[]{1000, 1000, 1000});
             // Register the channel with the system; you can't change the importance
             // or other notification behaviors after this
             NotificationManager notificationManager = getSystemService(NotificationManager.class);

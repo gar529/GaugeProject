@@ -2,10 +2,12 @@
 
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_height="match_parent"
-    android:layout_width="match_parent">
+    android:layout_width="match_parent"
+    android:padding="10dp">
 
 
     <LinearLayout
+
         android:orientation="vertical" android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -21,22 +23,28 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="top">
 
             <TextView
-                android:gravity="center_vertical"
                 android:paddingStart="10dp"
                 android:paddingEnd="5dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
                 android:layout_weight="2"
                 android:textSize="16sp"
                 android:id="@+id/favorite_gauge_name"
                 android:layout_width="0dp"
-                android:layout_height="match_parent" />
+                android:layout_height="wrap_content" />
 
             <TextView
+
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
                 android:paddingStart="5dp"
                 android:paddingEnd="10dp"
-                android:textSize="30sp"
+                android:textSize="20sp"
+                android:textStyle="bold"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
@@ -71,6 +79,15 @@
 
 
         </LinearLayout>
+
+        <Switch
+            android:id="@+id/favorite_notification_switch"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="5dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+
 
 
 

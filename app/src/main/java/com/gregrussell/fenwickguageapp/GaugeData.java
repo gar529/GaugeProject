@@ -26,12 +26,21 @@ public class GaugeData {
 
         GaugeReadParseObject gaugeReadParseObject = new GaugeReadParseObject();
 
-        try {
-            gaugeReadParseObject = readGauge(gaugeID);
-        }catch (IOException e){
-            e.printStackTrace();
-        }catch (XmlPullParserException e){
-            e.printStackTrace();
+        for(int i = 0; i < 3;i++) {
+            try {
+                gaugeReadParseObject = readGauge(gaugeID);
+
+                if(gaugeReadParseObject != null){
+                    i = 3;
+                    Log.d("GaugeData","GaugeData came back not null so exit loop. i is " + i);
+                }else {
+                    Log.d("GaugeData", "GaugeData came back null so looping through. i is " + i);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (XmlPullParserException e) {
+                e.printStackTrace();
+            }
         }
 
         return gaugeReadParseObject;

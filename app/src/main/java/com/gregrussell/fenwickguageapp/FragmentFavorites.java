@@ -8,6 +8,7 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 
@@ -30,6 +31,19 @@ public class FragmentFavorites extends Fragment {
 
 
         View view = inflater.inflate(R.layout.fragment_favortes_layout, container,false);
+
+        ImageView backButton = (ImageView)view.findViewById(R.id.back_button_favorites);
+        backButton.setClickable(true);
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                getActivity().getSupportFragmentManager().beginTransaction().remove(getActivity().getSupportFragmentManager().findFragmentByTag("favorite_fragment")).commit();
+                if(getActivity().getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                    getActivity().getSupportFragmentManager().popBackStack();
+                }
+            }
+        });
 
         listView = (ListView)view.findViewById(R.id.favorite_list_view);
         swipeRefresh = (SwipeRefreshLayout)view.findViewById(R.id.swipe_refresh);
