@@ -24,8 +24,11 @@ import android.location.Location;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
@@ -101,6 +104,34 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private LoadGauge loadGaugeTask;
 
 
+    @Override
+    public void onBackPressed(){
+
+        if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null) {
+            if (gaugeDataLayout.getVisibility() == View.VISIBLE) {
+                gaugeDataLayout.setVisibility(View.GONE);
+                if (selectedMarker != null) {
+                    resetSelectedMarker();
+                    selectedMarker = null;
+                }
+            } else if (searchSuggestions.getCount() > 0) {
+                searchView.setQuery("", false);
+                searchView.clearFocus();
+                if (selectedMarker != null) {
+                    resetSelectedMarker();
+                    selectedMarker = null;
+                }
+            } else {
+                super.onBackPressed();
+            }
+        }else{
+            super.onBackPressed();
+        }
+
+    }
+
+
+
 
 
     @Override
@@ -110,6 +141,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("Timer","Finish");
 
         mContext = this;
+
 
 
 
@@ -181,6 +213,18 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     }
                 }
 
+            }
+        });
+
+        FloatingActionButton floatingActionButton = (FloatingActionButton)findViewById(R.id.floating_button_map);
+        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
+                fragmentTransaction.commit();
             }
         });
 
@@ -434,6 +478,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
+
+
         mMap = googleMap;
         mMap.setMinZoomPreference(7.0f);
 
@@ -455,6 +501,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             public void onMapClick(LatLng latLng) {
                 Log.d("mapClick","click");
 
+                searchView.setQuery("",false);
+                searchView.clearFocus();
                 gaugeDataLayout.setVisibility(View.GONE);
                 if(selectedMarker != null){
                     resetSelectedMarker();
@@ -791,6 +839,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         //invisibleLayout.setVisibility(View.GONE);
         Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
 
+
     }
 
 
@@ -923,8 +972,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
         Gauge gauge = (Gauge)marker.getTag();
 
-        ActivateFavoriteButton buttonTask = new ActivateFavoriteButton();
-        buttonTask.execute(gauge);
+        //ActivateFavoriteButton buttonTask = new ActivateFavoriteButton();
+        //buttonTask.execute(gauge);
 
 
 
@@ -1015,14 +1064,20 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             GaugeData gaugeData = new GaugeData(gauge[0].getGaugeID());
             GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
+            boolean isFavorite = myDBHelper.isFavorite(gauge[0]);
 
-            LoadGaugeParams params = new LoadGaugeParams(gaugeReadParseObject,gauge[0]);
+            LoadGaugeParams params = new LoadGaugeParams(gaugeReadParseObject,gauge[0],isFavorite);
 
             return params;
         }
 
         @Override protected void onPostExecute(LoadGaugeParams result){
 
+            if(result.isFavorite){
+                favoriteButton.setSelected(true);
+            }else{
+                favoriteButton.setSelected(false);
+            }
             TextView gaugeNameText = (TextView)findViewById(R.id.gauge_name);
             TextView waterHeight = (TextView) findViewById(R.id.water_height);
             TextView time = (TextView) findViewById(R.id.reading_time);
@@ -1172,6 +1227,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             if(gauge != null) {
 
+
+
                 int a = 0;
                 if(a == 0){
                     mMap.clear();
@@ -1212,11 +1269,13 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         GaugeReadParseObject gaugeReadParseObject;
         Gauge gauge;
+        boolean isFavorite;
 
-        private LoadGaugeParams(GaugeReadParseObject gaugeReadParseObject,Gauge gauge){
+        private LoadGaugeParams(GaugeReadParseObject gaugeReadParseObject,Gauge gauge, boolean isFavorite){
 
             this.gaugeReadParseObject = gaugeReadParseObject;
             this.gauge = gauge;
+            this.isFavorite = isFavorite;
         }
     }
 

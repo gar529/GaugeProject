@@ -20,6 +20,11 @@ public class FragmentFavorites extends Fragment {
     LoadList task;
     SwipeRefreshLayout swipeRefresh;
 
+
+
+
+
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle onSavedInstanceState){
 

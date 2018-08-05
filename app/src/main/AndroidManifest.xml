@@ -19,9 +19,6 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
 
-        <activity android:name=".MainActivity">
-
-        </activity>
         <activity android:name=".MainFragmentActivity" />
         <activity
             android:name=".MainFragActivity"
@@ -34,6 +31,10 @@
                 android:resource="@xml/searchable"/>
             <meta-data android:name="android.app.default_searchable"
                 android:value="com.gregrussell.fenwickgaugeapp.MainFragActivity" />
+        </activity>
+        <activity android:name=".AskPermissionLauncher">
+
+
         </activity>
         <activity android:name=".HomeFragmentActivity">
             <intent-filter>

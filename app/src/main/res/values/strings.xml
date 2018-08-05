@@ -16,5 +16,6 @@
     <string name="multi_flood_warning">Multiple waterways have reached flood stage. Flooding may have begun</string>
     <string name="channel_name">Flood Alerts</string>
     <string name="channel_description">Make sound and pop on screen</string>
+    <string name="permission_dialog_message">Device location is used to display nearby waterways. Enable the Location Permission in Device Settings.</string>
 
 </resources>

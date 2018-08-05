@@ -2,15 +2,18 @@ package com.gregrussell.fenwickguageapp;
 
 import android.Manifest;
 import android.app.AlarmManager;
+import android.app.Dialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.SQLException;
+import android.location.Address;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -20,6 +23,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
@@ -28,6 +32,7 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -74,10 +79,28 @@ public class HomeFragmentActivity extends FragmentActivity {
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
+                    getMyLocation();
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
+
+
+
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setMessage(R.string.permission_dialog_message)
+                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+
+                                    getMyLocation();
+                                }
+                            });
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
                 }
+
+
                 return;
             }
 
@@ -126,53 +149,26 @@ public class HomeFragmentActivity extends FragmentActivity {
 
         setContentView(R.layout.home_fragment_layout);
 
-        OpenDataBaseTask task = new OpenDataBaseTask();
-        task.execute();
+
+        getLocationPermission();
+        //OpenDataBaseTask task = new OpenDataBaseTask();
+        //task.execute();
 
         LayoutInflater inflater = (LayoutInflater)getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View searchFragLayout = inflater.inflate(R.layout.fragment_home_layout, null);
 
 
     }
-    private class AppStart extends AsyncTask<Void,Void,Location>{
-        @Override
-        protected Location doInBackground(Void... params){
-            return getMyLocation();
 
-        }
+    private void getLocationPermission() {
 
-        @Override
-        protected void onPostExecute(Location result){
-
-            Location myLocation = new Location("");
-            Bundle bundle = new Bundle();
-            if(result == null){
-                myLocation.setLatitude(38.796395);
-                myLocation.setLongitude(-77.072127);
-            }else{
-                myLocation = result;
-            }
-            bundle.putParcelable("MY_LOCATION",myLocation);
-            FragmentManager fragmentManager = getSupportFragmentManager();
-            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            FragmentHome fragmentHome = new FragmentHome();
-            fragmentHome.setArguments(bundle);
-            fragmentTransaction.add(R.id.home_fragment_container, fragmentHome, "home_fragment");
-            fragmentTransaction.commit();
-        }
-    }
-
-    private Location getMyLocation(){
-        final FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        //mFusedLocationClient.setMockLocation(loc);
-
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.d("locations8", "permission not granted");
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
                 // Show an explanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
+                getMyLocation();
             } else {
                 // No explanation needed; request the permission
                 ActivityCompat.requestPermissions(this,
@@ -180,7 +176,22 @@ public class HomeFragmentActivity extends FragmentActivity {
                         MY_PERMISSIONS_REQUEST_LOCATION);
             }
         }else {
+            getMyLocation();
+        }
+    }
+
+    private void getMyLocation(){
+        final FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        //mFusedLocationClient.setMockLocation(loc);
+
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
+
+        }else {
             Log.d("locations9", "permission granted");
+
             mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
                 @Override
                 public void onSuccess(Location location) {
@@ -209,8 +220,12 @@ public class HomeFragmentActivity extends FragmentActivity {
                     }
                 }
             });
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
         }
-        return myLocation;
+
+
+
     }
 
     public void updateConnectedFlags() {
@@ -257,28 +272,44 @@ public class HomeFragmentActivity extends FragmentActivity {
                 //everything is good
                 Log.d("versionCheck3","versions match");
             }
-            return getMyLocation();
+            return myLocation;
         }
 
         @Override
         protected void onPostExecute(Location result){
 
 
-            Location myLocation = new Location("");
+            Location location = new Location("");
             Bundle bundle = new Bundle();
             if(result == null){
-                myLocation.setLatitude(38.796395);
-                myLocation.setLongitude(-77.072127);
+                location.setLatitude(38.904722);
+                location.setLongitude(-77.016389);
             }else{
-                myLocation = result;
+                location = result;
             }
-            bundle.putParcelable("MY_LOCATION",myLocation);
+
+            int distanceAway;
+            if(myLocation == null){
+                distanceAway = 20;
+            }else{
+                distanceAway = 5;
+            }
+
+            ClosestGaugeInputParams params = new ClosestGaugeInputParams(distanceAway,location);
+            ClosestGauge task = new ClosestGauge();
+            task.execute(params);
+
+
+            //switch to launching to mapFragment, commenting below out
+            /*bundle.putParcelable("MY_LOCATION",location);
             FragmentManager fragmentManager = getSupportFragmentManager();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             FragmentHome fragmentHome = new FragmentHome();
             fragmentHome.setArguments(bundle);
             fragmentTransaction.add(R.id.home_fragment_container, fragmentHome, "home_fragment");
-            fragmentTransaction.commit();
+            fragmentTransaction.commit();*/
+
+
 
         }
 
@@ -429,6 +460,99 @@ public class HomeFragmentActivity extends FragmentActivity {
             notificationManager.createNotificationChannel(channel);
         }
     }
+
+
+    private class ClosestGauge extends AsyncTask<ClosestGaugeInputParams, Void, ClosestGaugeOutputParams> {
+
+        int distance;
+
+        @Override
+        protected ClosestGaugeOutputParams doInBackground(ClosestGaugeInputParams... params) {
+
+
+            ClosestGaugeInputParams inputParams = params[0];
+            Location location = inputParams.location;
+            distance = inputParams.distanceAway;
+            ClosestGaugeOutputParams outputParams = new ClosestGaugeOutputParams(getAllGauges(), location);
+
+            return findClosestGaugeByGPS(outputParams);
+        }
+
+        @Override
+        protected void onPostExecute(ClosestGaugeOutputParams result) {
+
+            Log.d("locations", "number of gauges within 5 miles: " + result.gaugeList.size());
+            Log.d("locations", "locations that are within 5 miles: ");
+            {
+                for (int i = 0; i < result.gaugeList.size(); i++) {
+                    Log.d("locations", result.gaugeList.get(i).getGaugeName() + " " + result.gaugeList.get(i).getGaugeID());
+                }
+
+                ArrayList<Gauge> myList = new ArrayList<Gauge>();
+                myList.addAll(result.gaugeList);
+                Log.d("locations10", "myList size: " + myList.size());
+                Intent intent = new Intent(mContext, MainFragActivity.class);
+                //intent.putExtra("LIST_OF_RESULTS", myList);
+                intent.putExtra("MY_LOCATION", result.location);
+                intent.putExtra("DISTANCE", distance);
+                startActivity(intent);
+                HomeFragmentActivity.this.finish();
+
+            }
+        }
+
+
+    }
+
+    private static class ClosestGaugeInputParams{
+        int distanceAway;
+        Location location;
+
+        private ClosestGaugeInputParams(int distanceAway, Location location){
+            this.distanceAway = distanceAway;
+            this.location = location;
+        }
+    }
+
+
+    private static class ClosestGaugeOutputParams{
+        List<Gauge> gaugeList;
+        Location location;
+
+        private ClosestGaugeOutputParams(List<Gauge> gaugeList, Location location){
+            this.gaugeList = gaugeList;
+            this.location = location;
+        }
+    }
+
+    private List<Gauge> getAllGauges(){
+        DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+        try{
+            myDBHelper.createDataBase();
+
+        }catch (IOException e){
+            throw new Error("unable to create db");
+        }
+        try{
+            myDBHelper.openDataBase();
+        }catch (SQLException sqle){
+            throw sqle;
+        }
+        return myDBHelper.getAllGauges();
+    }
+
+    private ClosestGaugeOutputParams findClosestGaugeByGPS(ClosestGaugeOutputParams params){
+
+        Log.d("locations", "list size " + params.gaugeList.size());
+        GetLocations getLocations = new GetLocations(params.location,params.gaugeList);
+        List<Gauge> locationList = getLocations.getClosestGauges(100);
+        ClosestGaugeOutputParams newParams = new ClosestGaugeOutputParams(locationList,params.location);
+        return newParams;
+    }
+
+
+
+
 
 
 }

@@ -19,7 +19,7 @@ public class FragmentHome extends Fragment {
         final Location myLocation = this.getArguments().getParcelable("MY_LOCATION");
 
 
-        Button searchButton = (Button)view.findViewById(R.id.home_fragment_search_button);
+        /*Button searchButton = (Button)view.findViewById(R.id.home_fragment_search_button);
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -46,7 +46,7 @@ public class FragmentHome extends Fragment {
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
-        });
+        });*/
         return view;
     }
 }
