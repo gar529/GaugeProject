@@ -248,7 +248,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             cursor.close();
         }
         Log.d("getDataVersion",String.valueOf(dataVersion));
-        db.close();
+
         return dataVersion;
     }
 
@@ -289,7 +289,6 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         }finally {
             db.endTransaction();
         }
-        db.close();
         Log.d("addGauges2","Finish");
         addSuggestions(gaugeList);
     }
@@ -323,7 +322,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         }finally {
             db.endTransaction();
         }
-        db.close();
+
         Log.d("addMarkers2","Finish");
     }
 
@@ -343,13 +342,13 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         }finally {
             db.endTransaction();
         }
-        db.close();
+
     }
 
     public void clearMarkers(){
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("DELETE FROM " + Markers.TABLE_NAME);
-        db.close();
+
     }
 
     public boolean checkMarkerExists(String identifier){
@@ -395,7 +394,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             }while (cursor.moveToNext());
         }
         cursor.close();
-        db.close();
+
         return gaugeList;
     }
 
@@ -429,7 +428,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         }finally {
             db.endTransaction();
         }
-        db.close();
+
         Log.d("addSuggestions","finish");
 
 

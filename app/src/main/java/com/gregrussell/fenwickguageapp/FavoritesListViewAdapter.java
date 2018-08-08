@@ -45,6 +45,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
     private DataBaseHelperGauges myDBHelper;
     private Switch notificationSwitch;
 
+
     public FavoritesListViewAdapter(Context mContext, List<Gauge> gaugeList){
 
         this.mContext = mContext;
@@ -97,6 +98,8 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
         Log.d("FavoritesAdapter","gaugelist size " + gaugeList.size());
         Log.d("FavoritesAdapter2","current position " + position + ", gauge used " + gaugeList.get(position).getGaugeName());
+
+        currentView.setTag(gaugeList.get(position));
 
 
 
@@ -306,11 +309,11 @@ public class FavoritesListViewAdapter extends BaseAdapter {
                         Log.d("switchButton", checked + " " + params.gaugeName);
                         myDBHelper.changeFavoriteNotificationState(params.gauge, checked);
                         if (checked) {
-                            CharSequence text = "Receiving Notifications";
+                            CharSequence text = mContext.getResources().getString(R.string.notifications_enabled) + params.gauge.getGaugeName();
                             Toast toast = Toast.makeText(mContext, text, Toast.LENGTH_SHORT);
                             toast.show();
                         } else {
-                            CharSequence text = "Notifications Off";
+                            CharSequence text = mContext.getResources().getString(R.string.notifications_disabled) + params.gauge.getGaugeName();
                             Toast toast = Toast.makeText(mContext, text, Toast.LENGTH_SHORT);
                             toast.show();
                         }

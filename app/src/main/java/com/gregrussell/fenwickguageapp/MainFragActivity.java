@@ -44,6 +44,8 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.app.AppCompatDelegate;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
@@ -137,12 +139,13 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public static final String CHANNEL_ID = "Flood Warning";
 
 
+
     @Override
     public void onBackPressed(){
 
         Log.d("backpressed",String.valueOf(getSupportFragmentManager().findFragmentByTag("favorite_fragment")));
 
-        if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null) {
+        if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null && getSupportFragmentManager().findFragmentByTag("gauge_fragment") == null) {
             if (gaugeDataLayout.getVisibility() == View.VISIBLE) {
                 gaugeDataLayout.setVisibility(View.GONE);
                 if (selectedMarker != null) {
@@ -164,6 +167,26 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
     }
+
+
+
+    @Override
+    public void onResume(){
+        super.onResume();
+
+        Log.d("onResumeMain","onResume");
+        if(selectedMarker != null){
+            Gauge gauge = (Gauge)selectedMarker.getTag();
+            loadGaugeTask = new LoadGauge();
+            loadGaugeTask.execute(gauge);
+        }else{
+            if(gaugeDataLayout.getVisibility() != View.GONE)
+            gaugeDataLayout.setVisibility(View.GONE);
+        }
+
+    }
+
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
@@ -215,6 +238,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("Timer","Finish");
 
         mContext = this;
+
+
+        LinearLayout mainLayout = (LinearLayout)findViewById(R.id.main_layout);
+        mainLayout.requestFocus();
 
         String s = getIntent().getStringExtra("notification");
         Log.d("intent41",String.valueOf(s));
@@ -338,6 +365,20 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 FragmentFavorites fragmentFavorites = new FragmentFavorites();
                 fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
                 fragmentTransaction.commit();
+            }
+        });
+
+        gaugeDataLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(selectedMarker != null){
+
+
+
+                    Gauge gauge = (Gauge)selectedMarker.getTag();
+                    LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                    loadGaugeFragment.execute(gauge);
+                }
             }
         });
 
@@ -627,6 +668,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
 
             }
+
 
     }
 
@@ -1288,7 +1330,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    private class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
+    public class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
 
 
         View loadingPanel = (View)findViewById(R.id.listLoadingPanel);
@@ -1316,6 +1358,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         @Override protected void onPostExecute(LoadGaugeParams result){
 
+
+
             if(result.isFavorite){
                 favoriteButton.setSelected(true);
             }else{
@@ -1325,6 +1369,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             TextView waterHeight = (TextView) findViewById(R.id.water_height);
             TextView time = (TextView) findViewById(R.id.reading_time);
             TextView floodWarning = (TextView)findViewById(R.id.flood_warning);
+            waterHeight.setTextSize(TypedValue.COMPLEX_UNIT_SP,40);
+
 
             if(result.gaugeReadParseObject.getDatumList() != null && result.gaugeReadParseObject.getDatumList().size() > 0) {
 
@@ -1535,7 +1581,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         @Override
         protected void onPostExecute(Gauge result){
-            String toastText =result.getGaugeName() + " added to favorites";
+            String toastText =result.getGaugeName() + getResources().getString(R.string.add_favorite);
             Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
             toast.show();
         }
@@ -1554,7 +1600,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         @Override
         protected void onPostExecute(Gauge result){
-            String toastText = result.getGaugeName() + " removed from favorites";
+            String toastText = result.getGaugeName() + getResources().getString(R.string.remove_favorite);
             Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
             toast.show();
 
@@ -1784,6 +1830,56 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             // Starts the query
             conn.connect();
             return conn.getInputStream();
+        }
+    }
+
+    private class LoadGaugeFragment extends AsyncTask<Gauge,Void,GaugeFragParams>{
+
+        @Override
+        protected GaugeFragParams doInBackground(Gauge... params){
+
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+            Gauge gauge = params[0];
+            boolean isFavorite = myDBHelper.isFavorite(gauge);
+            Log.d("fragFave",String.valueOf(isFavorite));
+            int notificationState = 0;
+            if(isFavorite) {
+                notificationState = myDBHelper.getFavoriteNotificationState(gauge);
+            }
+            boolean isNotifiable = true;
+            if(notificationState == 0){
+                isNotifiable = false;
+            }
+
+            GaugeFragParams gaugeFragParams = new GaugeFragParams(gauge,isFavorite,isNotifiable);
+            return gaugeFragParams;
+        }
+
+        @Override
+        protected void onPostExecute(GaugeFragParams params){
+
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("gauge",params.getGauge());
+            bundle.putBoolean("isFavorite",params.isFavorite());
+            bundle.putBoolean("isNotifiable",params.isNotifiable());
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            FragmentGauge fragmentGauge = new FragmentGauge();
+            fragmentGauge.setArguments(bundle);
+            fragmentTransaction.replace(R.id.main_layout,fragmentGauge,"gauge_fragment").addToBackStack("Tag");
+            fragmentTransaction.commit();
+
         }
     }
 

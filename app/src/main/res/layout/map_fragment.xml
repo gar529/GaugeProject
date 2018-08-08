@@ -7,7 +7,6 @@
     android:layout_height="match_parent">
 
     <LinearLayout
-
         android:id="@+id/main_layout"
         android:layout_height="match_parent"
         android:layout_width="match_parent"
@@ -48,6 +47,8 @@
                 android:background="@color/colorInvisible"
                 android:id="@+id/invisible_layout"
                 android:clickable="true"
+                android:focusable="true"
+
                 >
 
                 <ProgressBar
@@ -73,7 +74,7 @@
 
 
                 <SearchView
-                    android:focusedByDefault="false"
+
                     android:id="@+id/map_search_bar"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -108,7 +109,7 @@
                 android:layout_height="wrap_content"
                 app:elevation="5dp"
                 app:borderWidth="0dp"
-                android:src="@drawable/btn_star_off_normal_holo_light"
+                android:src="@drawable/btn_rating_star_off_normal_holo_dark_crop"
                 app:rippleColor="@android:color/darker_gray"
                 app:backgroundTint="@android:color/background_light"
                 android:layout_gravity="bottom|end"
@@ -137,7 +138,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="3"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:clickable="true">
 
             <FrameLayout
                 android:layout_width="match_parent"
