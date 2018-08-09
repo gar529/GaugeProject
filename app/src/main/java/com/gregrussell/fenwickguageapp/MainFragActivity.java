@@ -124,7 +124,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private ListView searchSuggestions;
     private String mCurFilter;
     private ImageView favoriteButton;
-    private LoadGauge loadGaugeTask;
+    //private LoadGauge loadGaugeTask;
 
     public static final String WIFI = "Wi-fi";
     public static final String ANY = "Any";
@@ -143,28 +143,68 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     @Override
     public void onBackPressed(){
 
-        Log.d("backpressed",String.valueOf(getSupportFragmentManager().findFragmentByTag("favorite_fragment")));
+        Log.d("backpressed",String.valueOf(selectedMarker));
 
         if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null && getSupportFragmentManager().findFragmentByTag("gauge_fragment") == null) {
             if (gaugeDataLayout.getVisibility() == View.VISIBLE) {
+                Log.d("backpressed7,",String.valueOf(selectedMarker));
                 gaugeDataLayout.setVisibility(View.GONE);
                 if (selectedMarker != null) {
                     resetSelectedMarker();
                     selectedMarker = null;
                 }
             } else if (searchSuggestions.getCount() > 0) {
+                Log.d("backpressed6,",String.valueOf(selectedMarker));
                 searchView.setQuery("", false);
                 searchView.clearFocus();
                 if (selectedMarker != null) {
                     resetSelectedMarker();
                     selectedMarker = null;
                 }
+            }else if(selectedMarker !=null) {
+                Log.d("backpressed1,",String.valueOf(selectedMarker));
+                if (getSupportFragmentManager().findFragmentByTag("load_gauge_layout") != null) {
+                    Log.d("backpressed2",String.valueOf(selectedMarker));
+                    Bundle bundle = new Bundle();
+                    bundle.putSerializable("gauge", (Gauge)selectedMarker.getTag());
+                    FragmentManager fragmentManager = getSupportFragmentManager();
+                    FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                    LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                    loadGaugeFragment.setArguments(bundle);
+                    fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+                    fragmentTransaction.commit();
+
+                }else{
+                    Log.d("backpressed3",String.valueOf(selectedMarker));
+                    resetSelectedMarker();
+                    selectedMarker = null;
+                    super.onBackPressed();
+
+
+                }
             } else {
+                Log.d("backpressed5,",String.valueOf(selectedMarker));
                 super.onBackPressed();
             }
         }else{
-            super.onBackPressed();
+            if(selectedMarker !=null) {
+
+                Log.d("backpressed8,",String.valueOf(selectedMarker));
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("gauge", (Gauge)selectedMarker.getTag());
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                loadGaugeFragment.setArguments(bundle);
+                fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+                fragmentTransaction.commit();
+                super.onBackPressed();
+
+            }else {
+                super.onBackPressed();
+            }
         }
+
 
     }
 
@@ -177,8 +217,23 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("onResumeMain","onResume");
         if(selectedMarker != null){
             Gauge gauge = (Gauge)selectedMarker.getTag();
-            loadGaugeTask = new LoadGauge();
-            loadGaugeTask.execute(gauge);
+            //loadGaugeTask = new LoadGauge();
+            //loadGaugeTask.execute(gauge);
+            if(gaugeDataLayout.getVisibility() != View.VISIBLE){
+                gaugeDataLayout.setVisibility(View.VISIBLE);
+            }
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("gauge",gauge);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+            loadGaugeFragment.setArguments(bundle);
+            if(fragmentManager.findFragmentByTag("load_gauge_fragment") != null) {
+                fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+            }else{
+                fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+            }
+            fragmentTransaction.commit();
         }else{
             if(gaugeDataLayout.getVisibility() != View.GONE)
             gaugeDataLayout.setVisibility(View.GONE);
@@ -360,9 +415,15 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Bundle bundle = new Bundle();
+                if(selectedMarker !=null){
+
+                    bundle.putSerializable("selected_gauge", ((Gauge)selectedMarker.getTag()));
+                }
                 FragmentManager fragmentManager = getSupportFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                 FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentFavorites.setArguments(bundle);
                 fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
                 fragmentTransaction.commit();
             }
@@ -376,7 +437,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
                     Gauge gauge = (Gauge)selectedMarker.getTag();
-                    LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                    LoadGaugeFragmentAsync loadGaugeFragment = new LoadGaugeFragmentAsync();
                     loadGaugeFragment.execute(gauge);
                 }
             }
@@ -402,7 +463,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
 
-        favoriteButton = (ImageView)findViewById(R.id.favorite_button);
+        /*FavoriteButton = (ImageView)findViewById(R.id.favorite_button);
         favoriteButton.setClickable(true);
         favoriteButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -421,7 +482,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     }
                 }
             }
-        });
+        });*/
 
 
 
@@ -1248,12 +1309,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     @Override
     public boolean onMarkerClick(final Marker marker){
 
-        if(loadGaugeTask != null) {
+        /*if(loadGaugeTask != null) {
             if (loadGaugeTask.getStatus() == AsyncTask.Status.RUNNING || loadGaugeTask.getStatus() == AsyncTask.Status.PENDING) {
                 loadGaugeTask.cancel(true);
                 Log.d("loadGauge", "cancelled");
             }
-        }
+        }*/
         Gauge gauge = (Gauge)marker.getTag();
 
         //ActivateFavoriteButton buttonTask = new ActivateFavoriteButton();
@@ -1292,8 +1353,23 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             Log.d("markerStuff3",((Gauge)selectedMarker.getTag()).getGaugeID());
             markerList.add(nMarker);
             Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
-            loadGaugeTask = new LoadGauge();
-            loadGaugeTask.execute(gauge);
+            //loadGaugeTask = new LoadGauge();
+            //loadGaugeTask.execute(gauge);
+            if(gaugeDataLayout.getVisibility() != View.VISIBLE){
+                gaugeDataLayout.setVisibility(View.VISIBLE);
+            }
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("gauge",gauge);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+            loadGaugeFragment.setArguments(bundle);
+            if(fragmentManager.findFragmentByTag("load_gauge_fragment") != null) {
+                fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+            }else{
+                fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+            }
+            fragmentTransaction.commit();
             return false;
         }
         else{
@@ -1330,7 +1406,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    public class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
+    /*public class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
 
 
         View loadingPanel = (View)findViewById(R.id.listLoadingPanel);
@@ -1482,7 +1558,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return "";
 
         }
-    }
+    }*/
 
 
 
@@ -1546,10 +1622,25 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
 
 
+                if(gaugeDataLayout.getVisibility() != View.VISIBLE){
+                    gaugeDataLayout.setVisibility(View.VISIBLE);
+                }
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("gauge",gauge);
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                loadGaugeFragment.setArguments(bundle);
+                if(fragmentManager.findFragmentByTag("load_gauge_fragment") != null) {
+                    fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+                }else{
+                    fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+                }
+                fragmentTransaction.commit();
 
 
-                LoadGauge task = new LoadGauge();
-                task.execute(gauge);
+                //LoadGauge task = new LoadGauge();
+                //task.execute(gauge);
             }
 
         }
@@ -1833,7 +1924,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    private class LoadGaugeFragment extends AsyncTask<Gauge,Void,GaugeFragParams>{
+    private class LoadGaugeFragmentAsync extends AsyncTask<Gauge,Void,GaugeFragParams>{
 
         @Override
         protected GaugeFragParams doInBackground(Gauge... params){
@@ -1870,6 +1961,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         protected void onPostExecute(GaugeFragParams params){
 
             Bundle bundle = new Bundle();
+            bundle.putSerializable("selected_gauge",params.getGauge());
             bundle.putSerializable("gauge",params.getGauge());
             bundle.putBoolean("isFavorite",params.isFavorite());
             bundle.putBoolean("isNotifiable",params.isNotifiable());

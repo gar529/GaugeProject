@@ -3,7 +3,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:padding="10dp"
     android:id="@+id/load_gauge_fragment_container"
-    android:visibility="gone"
     android:layout_width="match_parent"
     android:layout_height="0dp"
     android:layout_weight="3"

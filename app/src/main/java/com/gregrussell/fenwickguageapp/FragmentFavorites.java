@@ -28,7 +28,7 @@ public class FragmentFavorites extends Fragment {
     private ListView listView;
     LoadList task;
     SwipeRefreshLayout swipeRefresh;
-
+    Gauge selectedGauge;
 
 
 
@@ -51,6 +51,10 @@ public class FragmentFavorites extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_favortes_layout, container,false);
 
+        Bundle bundle = this.getArguments();
+        if(bundle != null){
+            selectedGauge = (Gauge)bundle.get("selected_gauge");
+        }
 
 
 
@@ -68,10 +72,22 @@ public class FragmentFavorites extends Fragment {
             @Override
             public void onClick(View view) {
 
-                getActivity().getSupportFragmentManager().beginTransaction().remove(getActivity().getSupportFragmentManager().findFragmentByTag("favorite_fragment")).commit();
-                if(getActivity().getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                    getActivity().getSupportFragmentManager().popBackStack();
+                FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                if(selectedGauge !=null) {
+                    Log.d("backpressed8,", String.valueOf(selectedGauge));
+                    Bundle bundle = new Bundle();
+                    bundle.putSerializable("gauge", selectedGauge);
+                    LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                    loadGaugeFragment.setArguments(bundle);
+                    fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                 }
+                fragmentTransaction.remove(fragmentManager.findFragmentByTag("favorite_fragment"));
+                fragmentTransaction.commit();
+                if(fragmentManager.getBackStackEntryCount() > 0){
+                    fragmentManager.popBackStack();
+                }
+                
             }
         });
         toolbar.setTitle(R.string.favorites);
@@ -91,7 +107,7 @@ public class FragmentFavorites extends Fragment {
 
 
                 task.cancel(true);
-                LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                LoadGaugeFragmentAsync loadGaugeFragment = new LoadGaugeFragmentAsync();
                 loadGaugeFragment.execute(gauge);
 
             }
@@ -151,7 +167,7 @@ public class FragmentFavorites extends Fragment {
 
     }
 
-    private class LoadGaugeFragment extends AsyncTask<Gauge,Void,GaugeFragParams>{
+    private class LoadGaugeFragmentAsync extends AsyncTask<Gauge,Void,GaugeFragParams>{
 
         @Override
         protected GaugeFragParams doInBackground(Gauge... params){

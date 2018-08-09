@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">Fenwick Guage App</string>
+    <string name="app_name">Fenwick Gauge App</string>
     <string name="page_title">Title</string>
     <string name="updated">Updated</string>
     <string name="connection_error">Connection Error</string>
     <string name="xml_error">XML Error</string>
-    <string name="title_activity_main_frag">Map</string>
+    <string name="title_activity_main_frag">Gauge Project</string>
     <string name="minor_flooding">Minor flooding may have begun</string>
     <string name="moderate_flooding">Moderate flooding may have begun</string>
     <string name="major_flooding">Major flooding may have begun</string>

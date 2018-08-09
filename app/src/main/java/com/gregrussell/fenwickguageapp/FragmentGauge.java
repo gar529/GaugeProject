@@ -32,6 +32,7 @@ public class FragmentGauge extends Fragment {
     ImageView favoriteButton;
     Switch notificationSwitch;
     Toast notificationToast;
+    Gauge selectedGauge;
 
     //0 not changed, -1 disabled, 1 enabled
     int switchChangedByFavorite;
@@ -72,6 +73,7 @@ public class FragmentGauge extends Fragment {
 
 
         if(bundle != null){
+            selectedGauge =(Gauge)bundle.get("selected_gauge");
             gauge = (Gauge)bundle.get("gauge");
             isFavorite = bundle.getBoolean("isFavorite");
             isNotifiable = bundle.getBoolean("isNotifiable");
@@ -155,10 +157,21 @@ public class FragmentGauge extends Fragment {
             public void onClick(View view) {
                 FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                fragmentTransaction.remove(fragmentManager.findFragmentByTag("gauge_fragment")).commit();
+                if(selectedGauge !=null) {
+                    Log.d("backpressed8,", String.valueOf(selectedGauge));
+                    Bundle bundle = new Bundle();
+                    bundle.putSerializable("gauge", selectedGauge);
+                    LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
+                    loadGaugeFragment.setArguments(bundle);
+                    fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
+                }
+                fragmentTransaction.remove(fragmentManager.findFragmentByTag("gauge_fragment"));
+                fragmentTransaction.commit();
                 if(fragmentManager.getBackStackEntryCount() > 0){
                     fragmentManager.popBackStack();
                 }
+
+
             }
         });
 
