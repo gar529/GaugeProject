@@ -112,7 +112,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             CharSequence title = mContext.getResources().getString(R.string.flood_warning);
             CharSequence text = mContext.getResources().getString(R.string.multi_flood_warning);
-            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, HomeFragmentActivity.CHANNEL_ID)
+            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, GaugeApplication.CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(text)
                     .setSmallIcon(R.drawable.notification_icon)

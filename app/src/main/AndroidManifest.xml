@@ -57,7 +57,7 @@
                 <action android:name="com.gregrussell.fenwickguageapp.SEND_BROADCAST"/>
             </intent-filter>
         </receiver>
-        <receiver android:name=".StartAlarmAtBoot">
+        <receiver android:name=".StartAlarmAtBoot"
             android:enabled="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

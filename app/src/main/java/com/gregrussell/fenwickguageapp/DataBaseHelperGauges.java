@@ -557,6 +557,16 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         return count;
     }
 
+    public int getGaugesCount(){
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT * FROM " + Gauges.TABLE_NAME;
+        Cursor cursor = db.rawQuery(query,null);
+        int count = cursor.getCount();
+        cursor.close();
+        return count;
+    }
+
     public List<Gauge> getAllFavorites(){
 
         SQLiteDatabase db = this.getReadableDatabase();
