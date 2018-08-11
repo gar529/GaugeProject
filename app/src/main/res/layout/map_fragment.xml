@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<android.support.design.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/main_layout"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:orientation="vertical">
+
+
+
+
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="5">
+
+
+
+                <RelativeLayout
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/map_container">
+
+
+                    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+                        xmlns:map="http://schemas.android.com/apk/res-auto"
+                        xmlns:tools="http://schemas.android.com/tools"
+                        android:id="@+id/map"
+                        android:name="com.google.android.gms.maps.SupportMapFragment"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        tools:context=".MapsActivity" />
+                </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/colorInvisible"
+                android:id="@+id/invisible_layout"
+                android:clickable="true"
+                android:focusable="true"
+
+                >
+
+                <ProgressBar
+                    android:layout_centerInParent="true"
+                    android:id="@+id/map_progress_bar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"/>
+
+            </RelativeLayout>
+
+
+
+            <LinearLayout
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="5dp"
+                android:paddingTop="5dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_margin="10dp">
+
+
+                <SearchView
+
+                    android:id="@+id/map_search_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/map_search_layout_background"
+                    />
+
+
+                <ListView
+                    android:layout_marginTop="5dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/map_search_layout_background"
+                    android:id="@+id/search_suggestions"/>
+
+                <!--<EditText
+                    android:layout_gravity="center_vertical"
+                    android:singleLine="true"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/map_search_edit_text"/>-->
+
+
+
+
+            </LinearLayout>
+            <android.support.design.widget.FloatingActionButton
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_margin="30dp"
+                android:id="@+id/floating_button_map"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:elevation="5dp"
+                app:borderWidth="0dp"
+                android:src="@drawable/btn_rating_star_off_normal_holo_dark_crop"
+                app:rippleColor="@android:color/darker_gray"
+                app:backgroundTint="@android:color/background_light"
+                android:layout_gravity="bottom|end"
+                android:clickable="true" />
+
+
+        </FrameLayout>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <LinearLayout
+            android:padding="10dp"
+            android:id="@+id/gauge_data_layout"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="3"
+            android:orientation="vertical"
+            android:clickable="true">
+
+
+
+
+
+        </LinearLayout>
+
+</LinearLayout>
+</android.support.design.widget.CoordinatorLayout>

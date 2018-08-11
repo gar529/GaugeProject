@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_gauge_frag_switch"
+        app:actionLayout="@layout/switch_layout"
+        android:title=""
+        app:showAsAction="always"
+        />
+    <item
+    android:id="@+id/action_gauge_frag_favorite"
+    app:actionLayout="@layout/favorite_button_layout"
+    android:title=""
+    app:showAsAction="always"/>
+
+    <!--  <item
+          android:id="@+id/action_gauge_frag_favorite"
+          android:icon="@drawable/favorite_button"
+          android:title=""
+          app:showAsAction="always"/>-->
+
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        app:showAsAction="never"/>
+
+</menu>
