@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 public class LoadGaugeFragment  extends Fragment {
@@ -128,7 +129,7 @@ public class LoadGaugeFragment  extends Fragment {
 
 
                 String gaugeName = result.gauge.getGaugeName();
-                String water = result.gaugeReadParseObject.getDatumList().get(0).getPrimary() + getResources().getString(R.string.feet_unit);
+                String water = result.gaugeReadParseObject.getDatumList().get(0).getPrimary() + getActivity().getResources().getString(R.string.feet_unit);
 
 
                 Log.d("onPostExecute result", "valid is: " + result.gaugeReadParseObject.getDatumList().get(0).getValid() + " primary is: " + result.gaugeReadParseObject.getDatumList().get(0).getPrimary());
@@ -136,10 +137,13 @@ public class LoadGaugeFragment  extends Fragment {
                 waterHeight.setText(water);
                 floodWarning.setText(getFloodWarning(result.gaugeReadParseObject.getSigstages(),result.gaugeReadParseObject.getDatumList().get(0).getPrimary()));
                 String dateString = result.gaugeReadParseObject.getDatumList().get(0).getValid();
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
+                //String dateString = "2018-08-10T12:05:00-00:00";
+                Log.d("dateIssue1","value of the data retrieved from server: " + dateString);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH);
                 Date convertedDate = new Date();
                 try {
                     convertedDate = dateFormat.parse(dateString);
+                    Log.d("dateIssue2","value of data retried from server converted to date in millis: " + convertedDate.getTime());
 
 
                 } catch (ParseException e) {
@@ -149,7 +153,7 @@ public class LoadGaugeFragment  extends Fragment {
                     e.printStackTrace();
                 }
                 Date date = Calendar.getInstance().getTime();
-                DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+                DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
                 TimeZone tz = TimeZone.getDefault();
                 Date now = new Date();
                 int offsetFromUtc = tz.getOffset(now.getTime());
@@ -162,7 +166,7 @@ public class LoadGaugeFragment  extends Fragment {
 
 
                 Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
-                time.setText(formatter.format(correctTZDate));
+                time.setText(formatter.format(convertedDate));
                 loadingPanel.setVisibility(View.GONE);
                 gaugeText.setVisibility(View.VISIBLE);
             }

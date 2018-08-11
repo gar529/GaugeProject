@@ -12,4 +12,207 @@
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
+
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        >
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:background="@drawable/header_shadow"/>
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <android.support.v4.widget.SwipeRefreshLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/fragment_gauge_swipe_refresh">
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <LinearLayout
+                            android:paddingBottom="10dp"
+                            android:id="@+id/fragment_gauge_bottom_text_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <LinearLayout
+                                android:paddingStart="20dp"
+                                android:paddingEnd="20dp"
+                                android:paddingTop="10dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:padding="10dp"
+                                    android:layout_gravity="center_horizontal"
+                                    android:id="@+id/fragment_gauge_flood_warning"
+                                    android:visibility="gone"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@android:color/holo_red_dark"/>
+                                <TextView
+                                    android:layout_marginBottom="20dp"
+                                    android:layout_gravity="center_horizontal"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:id="@+id/fragment_gauge_name"
+                                    android:textSize="18sp"/>
+                                <TextView
+                                    android:layout_gravity="center_horizontal"
+                                    android:id="@+id/fragment_gauge_current_date"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textStyle="bold"/>
+                                <TextView
+                                    android:layout_gravity="center_horizontal"
+                                    android:id="@+id/fragment_gauge_current_stage"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="50sp"
+                                    />
+                            </LinearLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+                            <LinearLayout
+                                android:paddingStart="20dp"
+                                android:paddingEnd="20dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:text="@string/one_day"
+                                    android:id="@+id/fragment_gauge_date_range"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textStyle="bold"/>
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
+                                    <LinearLayout
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_weight="1"
+                                        android:orientation="vertical"
+                                        android:gravity="bottom">
+                                        <LinearLayout
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content"
+                                            android:orientation="horizontal">
+                                            <TextView
+                                                android:layout_width="wrap_content"
+                                                android:layout_height="wrap_content"
+                                                android:text="@string/high"
+                                                android:layout_marginEnd="5dp"/>
+                                            <TextView
+                                                android:id="@+id/fragment_gauge_high_stage"
+                                                android:layout_width="wrap_content"
+                                                android:layout_height="wrap_content"
+                                                android:layout_marginEnd="5dp"/>
+                                        </LinearLayout>
+                                        <TextView
+                                            android:id="@+id/fragment_gauge_high_date"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:textSize="12sp" />
+                                    </LinearLayout>
+
+                                    <LinearLayout
+                                        android:layout_width="0dp"
+                                        android:layout_weight="1"
+                                        android:layout_height="wrap_content"
+                                        android:orientation="vertical">
+                                        <LinearLayout
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content"
+                                            android:orientation="horizontal">
+                                            <TextView
+                                                android:layout_marginEnd="5dp"
+                                                android:layout_width="wrap_content"
+                                                android:layout_height="wrap_content"
+                                                android:text="@string/low"/>
+                                            <TextView
+                                                android:id="@+id/fragment_gauge_low_stage"
+                                                android:layout_width="wrap_content"
+                                                android:layout_height="wrap_content"
+                                                android:layout_marginEnd="5dp"/>
+                                        </LinearLayout>
+                                        <TextView
+                                            android:id="@+id/fragment_gauge_low_date"
+                                            android:textSize="12sp"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            />
+                                    </LinearLayout>
+                                </LinearLayout>
+                            </LinearLayout>
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+
+
+
+
+                <ListView
+                    android:layout_below="@id/fragment_gauge_bottom_text_layout"
+                    android:id="@+id/fragment_gauge_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+
+                    />
+
+
+                <RelativeLayout
+                    android:layout_below="@id/fragment_gauge_bottom_text_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="5dp"
+                    android:background="@drawable/header_shadow"/>
+
+
+            </RelativeLayout>
+
+    </android.support.v4.widget.SwipeRefreshLayout>
+
+
+    </FrameLayout>
+
+
+
+
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/background_light"
+            android:id="@+id/fragment_gauge_progress_bar_layout"
+            android:clickable="true"
+            android:focusable="true"
+
+            >
+
+            <ProgressBar
+                android:layout_centerInParent="true"
+                android:id="@+id/fragment_gauge_progress_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:indeterminate="true"/>
+
+        </RelativeLayout>
+
+
+
+    </FrameLayout>
+
+
+
+
+
 </LinearLayout>

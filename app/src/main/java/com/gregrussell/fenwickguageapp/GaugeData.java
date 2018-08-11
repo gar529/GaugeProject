@@ -12,6 +12,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
+import java.util.ResourceBundle;
 
 public class GaugeData {
 
@@ -76,6 +77,10 @@ public class GaugeData {
         Log.d("urlString",urlString);
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        Log.d("gaugeDataCache"," " + conn.getDefaultUseCaches() + " " + conn.getUseCaches());
+        conn.setDefaultUseCaches(false);
+        conn.setUseCaches(false);
+        Log.d("gaugeDataCache2"," " + conn.getDefaultUseCaches() + " " + conn.getUseCaches());
         conn.setReadTimeout(10000 /* milliseconds */);
         conn.setConnectTimeout(15000 /* milliseconds */);
         conn.setRequestMethod("GET");

@@ -87,7 +87,7 @@ public class FragmentFavorites extends Fragment {
                 if(fragmentManager.getBackStackEntryCount() > 0){
                     fragmentManager.popBackStack();
                 }
-                
+
             }
         });
         toolbar.setTitle(R.string.favorites);

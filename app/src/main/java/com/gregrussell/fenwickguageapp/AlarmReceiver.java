@@ -36,7 +36,8 @@ public class AlarmReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
 
         mContext = context;
-        Log.d("receivedBroadcast","broadcast received");
+
+        Log.i("receivedBroadcast","broadcast received");
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent myIntent = new Intent(context, AlarmReceiver.class);
         PendingIntent alarmIntent = PendingIntent.getBroadcast(context, 0, myIntent, 0);
@@ -66,7 +67,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         @Override
         protected List<FloodedGauge> doInBackground(Void... params){
 
-            Log.d("receivedBroadcast","async task running");
+            Log.i("receivedBroadcast","async task running");
             List<Gauge> faveGaugeList = getAllFavorites();
             List<GaugeReadParseObject> gaugeReadParseObjectList = new ArrayList<GaugeReadParseObject>();
             if(faveGaugeList != null && faveGaugeList.size() > 0){
@@ -100,7 +101,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
             }
 
-            Log.d("receivedBroadcast", "async finished");
+            Log.i("receivedBroadcast", "async finished");
 
 
 

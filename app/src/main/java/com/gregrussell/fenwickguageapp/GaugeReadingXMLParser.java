@@ -55,6 +55,11 @@ public class GaugeReadingXMLParser {
                 if (name == null){
                     continue;
                 }
+                if(name.equals("forecast")){
+
+                    eventType = XmlPullParser.END_DOCUMENT;
+                    break;
+                }
                 if (name.equals("sigstages")){
                     //Log.d("xmldata","found a sigstages");
                     sig = readSigstages(parser);

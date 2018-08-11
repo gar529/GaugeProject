@@ -122,7 +122,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             return "";
         }
         String dateString = valid;
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
         Date convertedDate = new Date();
         try {
             convertedDate = dateFormat.parse(dateString);
@@ -135,7 +135,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             e.printStackTrace();
         }
         Date date = Calendar.getInstance().getTime();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
         TimeZone tz = TimeZone.getDefault();
         Date now = new Date();
         int offsetFromUtc = tz.getOffset(now.getTime());
@@ -148,7 +148,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
 
         Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
-        return formatter.format(correctTZDate);
+        return formatter.format(convertedDate);
 
 
     }
