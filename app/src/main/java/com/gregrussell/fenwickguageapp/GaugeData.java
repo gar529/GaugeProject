@@ -49,14 +49,8 @@ public class GaugeData {
         InputStream stream = null;
         // Instantiate the parser
         GaugeReadingXMLParser gaugeXmlParser = new GaugeReadingXMLParser();
-        List<Datum> datums = null;
-        String valid = null;
-        String primary = null;
-        String summary = null;
-        Calendar rightNow = Calendar.getInstance();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
 
-        GaugeReadParseObject gaugeReadParseObject = new GaugeReadParseObject();
+        GaugeReadParseObject gaugeReadParseObject;
         try {
             stream = downloadUrl(urlString);
             gaugeReadParseObject = gaugeXmlParser.parse(stream);

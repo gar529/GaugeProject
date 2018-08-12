@@ -303,19 +303,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         private List<Gauge> getAllFavorites(){
-            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
-            try{
-                myDBHelper.createDataBase();
 
-            }catch (IOException e){
-                throw new Error("unable to create db");
-            }
-            try{
-                myDBHelper.openDataBase();
-            }catch (SQLException sqle){
-                throw sqle;
-            }
-            return myDBHelper.getNotifiableFavorites();
+            return GaugeApplication.myDBHelper.getNotifiableFavorites();
 
         }
 

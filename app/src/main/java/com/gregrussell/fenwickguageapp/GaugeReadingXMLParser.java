@@ -15,7 +15,7 @@ public class GaugeReadingXMLParser {
 
 
     private static final String ns = null;
-    List<Datum> datums = new ArrayList<Datum>();
+    private List<Datum> datums = new ArrayList<Datum>();
 
     public GaugeReadParseObject parse(InputStream in) throws XmlPullParserException, IOException {
 

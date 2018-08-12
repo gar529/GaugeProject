@@ -363,8 +363,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             public void onClick(View view) {
 
                 updateLocation(mContext,mFusedLocationClient);
+                UpdateLocationParams params = new UpdateLocationParams(mContext,mFusedLocationClient);
                 AsyncUpdateLocation asyncUpdateLocation = new AsyncUpdateLocation();
-                asyncUpdateLocation.execute();
+                asyncUpdateLocation.execute(params);
                 clearViews(mContext,searchView,gaugeDataLayout);
             }
         });

@@ -20,10 +20,10 @@ import java.util.TimeZone;
 
 public class GaugeDataListAdapter extends BaseAdapter {
 
-    LayoutInflater inflater;
-    Context mContext;
-    List<Datum> datumList;
-    View currentView;
+    private LayoutInflater inflater;
+    private Context mContext;
+    private List<Datum> datumList;
+    private View currentView;
 
     public GaugeDataListAdapter(Context mContext, List<Datum> datumList){
         this.mContext = mContext;
@@ -90,7 +90,7 @@ public class GaugeDataListAdapter extends BaseAdapter {
             e.printStackTrace();
         }
         Date date = Calendar.getInstance().getTime();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
         TimeZone tz = TimeZone.getDefault();
         Date now = new Date();
         int offsetFromUtc = tz.getOffset(now.getTime());
