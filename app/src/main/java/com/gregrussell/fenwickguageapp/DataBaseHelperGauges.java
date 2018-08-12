@@ -241,7 +241,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Cursor cursor = db.rawQuery(selectQuery,null);
         cursor.moveToFirst();
         try{
-            dataVersion = cursor.getInt(Constants.GAUGES_VERSION_POSITION);
+            dataVersion = cursor.getInt(GaugeApplication.GAUGES_VERSION_POSITION);
             cursor.close();
         }catch (Exception e){
             e.printStackTrace();
@@ -384,12 +384,12 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Cursor cursor = db.rawQuery(query,new String[] {"1"});
         if(cursor.moveToFirst()){
             do{
-                Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
-                        cursor.getString(Constants.GAUGES_NAME_POSITION),
-                        cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
-                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
+                Gauge gauge = new Gauge(cursor.getString(GaugeApplication.GAUGES_URL_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_NAME_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_IDENTIFIER_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LATITUDE_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_ADDRESS_POSITION));
                 gaugeList.add(gauge);
             }while (cursor.moveToNext());
         }
@@ -464,12 +464,12 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Cursor cursor = db.rawQuery(query,new String[]{identifier});
         cursor.moveToFirst();
         try{
-            url = cursor.getString(Constants.GAUGES_URL_POSITION);
-            name = cursor.getString(Constants.GAUGES_NAME_POSITION);
-            id = cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION);
-            lat = cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION);
-            lon = cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION);
-            address = cursor.getString(Constants.GAUGES_ADDRESS_POSITION);
+            url = cursor.getString(GaugeApplication.GAUGES_URL_POSITION);
+            name = cursor.getString(GaugeApplication.GAUGES_NAME_POSITION);
+            id = cursor.getString(GaugeApplication.GAUGES_IDENTIFIER_POSITION);
+            lat = cursor.getDouble(GaugeApplication.GAUGES_LATITUDE_POSITION);
+            lon = cursor.getDouble(GaugeApplication.GAUGES_LONGITUDE_POSITION);
+            address = cursor.getString(GaugeApplication.GAUGES_ADDRESS_POSITION);
         }catch (SQLiteException e){
             e.printStackTrace();
         }
@@ -577,12 +577,12 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
         if(cursor.moveToFirst()){
             do{
-                Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
-                        cursor.getString(Constants.GAUGES_NAME_POSITION),
-                        cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
-                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
+                Gauge gauge = new Gauge(cursor.getString(GaugeApplication.GAUGES_URL_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_NAME_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_IDENTIFIER_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LATITUDE_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_ADDRESS_POSITION));
                 list.add(gauge);
             }while (cursor.moveToNext());
             cursor.close();
@@ -604,12 +604,12 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
         if(cursor.moveToFirst()){
             do{
-                Gauge gauge = new Gauge(cursor.getString(Constants.GAUGES_URL_POSITION),
-                        cursor.getString(Constants.GAUGES_NAME_POSITION),
-                        cursor.getString(Constants.GAUGES_IDENTIFIER_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LATITUDE_POSITION),
-                        cursor.getDouble(Constants.GAUGES_LONGITUDE_POSITION),
-                        cursor.getString(Constants.GAUGES_ADDRESS_POSITION));
+                Gauge gauge = new Gauge(cursor.getString(GaugeApplication.GAUGES_URL_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_NAME_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_IDENTIFIER_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LATITUDE_POSITION),
+                        cursor.getDouble(GaugeApplication.GAUGES_LONGITUDE_POSITION),
+                        cursor.getString(GaugeApplication.GAUGES_ADDRESS_POSITION));
                 list.add(gauge);
             }while (cursor.moveToNext());
             cursor.close();
@@ -629,7 +629,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Cursor cursor = db.rawQuery(query,new String[]{gauge.getGaugeID()});
         cursor.moveToFirst();
         try{
-            notification = cursor.getInt(Constants.FAVORITES_NOTIFICATION_POSITION);
+            notification = cursor.getInt(GaugeApplication.FAVORITES_NOTIFICATION_POSITION);
         }catch (SQLiteException e){
             e.printStackTrace();
         }

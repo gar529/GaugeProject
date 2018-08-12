@@ -44,12 +44,12 @@ public class AlarmReceiver extends BroadcastReceiver {
         myIntent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
 
         if(Build.VERSION.SDK_INT >= 23) {
-            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + GaugeApplication.FIFTEEN_MINUTES_MILLIS, alarmIntent);
         }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
-            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + GaugeApplication.FIFTEEN_MINUTES_MILLIS, alarmIntent);
         }else{
             Random random = new Random();
-            int randomTimeMillis = random.nextInt(Constants.UPPER_BOUND_MILLIS - Constants.LOWER_BOUND_MILLIS) + Constants.LOWER_BOUND_MILLIS;
+            int randomTimeMillis = random.nextInt(GaugeApplication.UPPER_BOUND_MILLIS - GaugeApplication.LOWER_BOUND_MILLIS) + GaugeApplication.LOWER_BOUND_MILLIS;
             alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
         }
 
@@ -158,7 +158,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             intent.putExtra("notification","notification");
             PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, HomeFragmentActivity.CHANNEL_ID)
+            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, GaugeApplication.CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(text)
                     .setSmallIcon(R.drawable.notification_icon)

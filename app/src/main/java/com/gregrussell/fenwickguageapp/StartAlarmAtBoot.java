@@ -28,12 +28,12 @@ public class StartAlarmAtBoot extends BroadcastReceiver {
 
 
             if(Build.VERSION.SDK_INT >= 23) {
-                alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+                alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + GaugeApplication.FIFTEEN_MINUTES_MILLIS, alarmIntent);
             }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
-                alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+                alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + GaugeApplication.FIFTEEN_MINUTES_MILLIS, alarmIntent);
             }else{
                 Random random = new Random();
-                int randomTimeMillis = random.nextInt(Constants.UPPER_BOUND_MILLIS - Constants.LOWER_BOUND_MILLIS) + Constants.LOWER_BOUND_MILLIS;
+                int randomTimeMillis = random.nextInt(GaugeApplication.UPPER_BOUND_MILLIS - GaugeApplication.LOWER_BOUND_MILLIS) + GaugeApplication.LOWER_BOUND_MILLIS;
                 alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
             }
         }
