@@ -293,7 +293,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         addSuggestions(gaugeList);
     }
 
-    public void clearTables(){
+    private void clearTables(){
 
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("DELETE FROM " + Gauges.TABLE_NAME);
@@ -353,6 +353,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
 
     public boolean checkMarkerExists(String identifier){
 
+        Log.d("markersAdded7","IN DB, STRING IS " + identifier);
 
         String idInTable;
         SQLiteDatabase db = this.getReadableDatabase();
@@ -365,13 +366,16 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             idInTable = statement.simpleQueryForString();
         }catch (Exception e){
             e.printStackTrace();
+            Log.d("markersAdded8", "IN DB, EXCEPTION RETURN");
             return false;
         }finally {
         db.endTransaction();
         }
         if(idInTable.toUpperCase().equals(identifier.toUpperCase())){
+            Log.d("markersAdded9", "IN DB, RETURN TRUE: id in table: " + idInTable.toUpperCase() + ",  id: " + identifier.toUpperCase());
             return true;
         }
+        Log.d("markersAdded10", "IN DB, RETURN FALSE: id in table: " + idInTable.toUpperCase() + ",  id: " + identifier.toUpperCase());
         return false;
 
     }
