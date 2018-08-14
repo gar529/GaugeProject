@@ -75,9 +75,11 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMapOptions;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -110,7 +112,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static List<Gauge> allGauges;
     private LinearLayout gaugeDataLayout;
     private static float mapZoomLevel;
-
+    private static FragmentManager mFragmentManager;
     private Context mContext;
     private static List<Marker> markerList;
     private static float zoomLevel[] = {11,10,8,7,0};
@@ -406,9 +408,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         getLoaderManager().initLoader(0,null,this);
         Log.d("searchView3", "adapter empty? " + mAdapter.isEmpty());
         GaugeApplication.myDBHelper.clearMarkers();
+        mFragmentManager = getSupportFragmentManager();
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        getMyLocation(mContext,mFusedLocationClient,mapFragment);
+        getMyLocation(mContext,mFusedLocationClient);
 
 
     }
@@ -425,10 +428,11 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
 
-    private static void getMyLocation(Context context,FusedLocationProviderClient providerClient, SupportMapFragment mapFragment){
+    private static void getMyLocation(Context context,FusedLocationProviderClient providerClient){
+
 
         boolean b = false;
-        UpdateDBParams updateDBParams = new UpdateDBParams(context, b, mapFragment);
+        UpdateDBParams updateDBParams = new UpdateDBParams(context, b);
         if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             UpdateDataBaseTask task = new UpdateDataBaseTask();
             task.execute(updateDBParams);
@@ -580,7 +584,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             if(address.getCountryCode().equals("US")){
                 LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,CLOSEST_ZOOM));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng,CLOSEST_ZOOM));
             }else{
                 CharSequence text = "No results for " + query;
                 Toast toast = Toast.makeText(mContext,text,Toast.LENGTH_SHORT);
@@ -682,6 +686,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("compass", String.valueOf(mMap.getUiSettings().isCompassEnabled()));
         setCompassPosition();
         myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
+
         mMap.setOnMarkerClickListener(this);
 
         //when the map is clicked, clear the views
@@ -938,7 +943,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
-    
+
     private void addMarkers(List<Gauge> gaugeList, Float zoom){
         Log.d("markersAdded1", "STart");
         //invisibleLayout.setVisibility(View.VISIBLE);
@@ -1098,16 +1103,15 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return true;
         }
 
+
     }
 
     private static class GetGaugesParams{
         Context context;
         List<Gauge> gauges;
-        SupportMapFragment mapFragment;
-        private GetGaugesParams(Context context, List<Gauge> gauges, SupportMapFragment mapFragment){
+        private GetGaugesParams(Context context, List<Gauge> gauges){
             this.context = context;
             this.gauges = gauges;
-            this.mapFragment = mapFragment;
         }
 
     }
@@ -1117,11 +1121,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         protected GetGaugesParams doInBackground(GetGaugesParams... params){
 
             Context context = params[0].context;
-            SupportMapFragment mapFragment = params[0].mapFragment;
             Log.d("getGauges",String.valueOf(homeLocation));
             allGauges = getAllGauges();
             GetLocations getLocations = new GetLocations(homeLocation,allGauges);
-            return new GetGaugesParams(context,getLocations.getClosestGauges(250),mapFragment);
+            return new GetGaugesParams(context,getLocations.getClosestGauges(250));
         }
         @Override
         protected void onPostExecute(GetGaugesParams result){
@@ -1130,7 +1133,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             Context context = result.context;
             myGaugeList = result.gauges;
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-            SupportMapFragment mapFragment = result.mapFragment;
+            SupportMapFragment mapFragment = (SupportMapFragment)mFragmentManager.findFragmentById(R.id.map);
             mapFragment.getMapAsync((OnMapReadyCallback) context);
 
 
@@ -1208,7 +1211,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
                 LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
 
                 if(gaugeDataLayout.getVisibility() != View.VISIBLE){
                     gaugeDataLayout.setVisibility(View.VISIBLE);
@@ -1232,11 +1235,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static class UpdateDBParams{
         Context context;
         boolean dbEmpty;
-        SupportMapFragment mapFragment;
-        private UpdateDBParams(Context context, boolean dbEmpty,SupportMapFragment mapFragment){
+        private UpdateDBParams(Context context, boolean dbEmpty){
             this.context = context;
             this.dbEmpty = dbEmpty;
-            this.mapFragment = mapFragment;
         }
     }
 
@@ -1252,7 +1253,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         protected UpdateDBParams doInBackground(UpdateDBParams...params){
 
             boolean dbEmpty;
-            SupportMapFragment mapFragment = params[0].mapFragment;
             List<Gauge> gaugeList = new ArrayList<Gauge>();
             int xmlVersion = checkXMLVersion();
             int dbVersion = checkDataBaseVersion();
@@ -1281,13 +1281,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
 
             Context context = params[0].context;
-            return new UpdateDBParams(context,dbEmpty,mapFragment);
+            return new UpdateDBParams(context,dbEmpty);
         }
 
         @Override
         protected void onPostExecute(UpdateDBParams result){
 
-            SupportMapFragment mapFragment = result.mapFragment;
             boolean databaseEmpty = result.dbEmpty;
             Context context = result.context;
             Location location = new Location("");
@@ -1315,7 +1314,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 toast.show();
             }
 
-            GetGaugesParams params = new GetGaugesParams(context,null,mapFragment);
+            GetGaugesParams params = new GetGaugesParams(context,null);
             GetGauges task = new GetGauges();
             task.execute(params);
         }
@@ -1696,7 +1695,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 position(homeLatLngPos).icon(BitmapDescriptorFactory.
                 defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
         myLocationMarker.setTag(null);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLatLngPos, zoom));
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(targetLatLngPos, zoom));
 
 
     }

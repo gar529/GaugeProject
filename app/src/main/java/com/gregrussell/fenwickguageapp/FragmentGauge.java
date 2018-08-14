@@ -55,19 +55,122 @@ public class FragmentGauge extends Fragment {
     RelativeLayout progressBarLayout;
     final static double BAD_DATA = -12654894165.41586;
     SwipeRefreshLayout swipeRefreshLayout;
+    Toolbar toolbar;
+    View view;
 
     //0 not changed, -1 disabled, 1 enabled
     static int switchChangedByFavorite;
+
+
+
+    @Override
+    public void onSaveInstanceState(Bundle bundle){
+        super.onSaveInstanceState(bundle);
+
+        bundle.putSerializable("selected_gauge",selectedGauge);
+        bundle.putSerializable("gauge",gauge);
+        bundle.putBoolean("isFavorite",isFavorite);
+        bundle.putBoolean("isNotifiable",isNotifiable);
+
+
+    }
+    @Override
+    public void onViewStateRestored(Bundle bundle){
+        super.onViewStateRestored(bundle);
+
+        if(bundle != null){
+            selectedGauge =(Gauge)bundle.get("selected_gauge");
+            gauge = (Gauge)bundle.get("gauge");
+            isFavorite = bundle.getBoolean("isFavorite");
+            isNotifiable = bundle.getBoolean("isNotifiable");
+            String gaugeName = gauge.getGaugeName();
+            toolbar.setTitle(gaugeName);
+
+            if(isFavorite){
+                favoriteButton.setSelected(true);
+            }else {
+                favoriteButton.setSelected(false);
+            }
+
+            if(NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
+
+                notificationSwitch.setEnabled(true);
+                if(isNotifiable){
+                    notificationSwitch.setChecked(true);
+                }else{
+                    notificationSwitch.setChecked(false);
+                }
+
+            }else{
+                notificationSwitch.setEnabled(false);
+                notificationSwitch.setChecked(false);
+            }
+
+
+        }
+
+    }
+
+
+
+    @Override
+    public void onResume(){
+        super.onResume();
+
+        Log.d("FragmentGauge","onResume");
+        Bundle bundle = this.getArguments();
+
+        Log.d("FragmentGauge1","bundle is " + String.valueOf(bundle));
+        if(bundle != null){
+            selectedGauge =(Gauge)bundle.get("selected_gauge");
+            gauge = (Gauge)bundle.get("gauge");
+            isFavorite = bundle.getBoolean("isFavorite");
+            isNotifiable = bundle.getBoolean("isNotifiable");
+            String gaugeName = gauge.getGaugeName();
+            toolbar.setTitle(gaugeName);
+
+            if(isFavorite){
+                favoriteButton.setSelected(true);
+            }else {
+                favoriteButton.setSelected(false);
+            }
+
+            if(NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
+
+                notificationSwitch.setEnabled(true);
+                if(isNotifiable){
+                    notificationSwitch.setChecked(true);
+                }else{
+                    notificationSwitch.setChecked(false);
+                }
+
+            }else{
+                notificationSwitch.setEnabled(false);
+                notificationSwitch.setChecked(false);
+            }
+
+
+            progressBarLayout.setVisibility(View.VISIBLE);
+            GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,progressBarLayout,
+                    swipeRefreshLayout,null);
+            GetGaugeData getGaugeData = new GetGaugeData();
+            getGaugeData.execute(params);
+        }
+
+
+    }
+
+
 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle onSavedInstanceState){
 
 
-        final View view = inflater.inflate(R.layout.fragment_gauge_layout, container,false);
+        view = inflater.inflate(R.layout.fragment_gauge_layout, container,false);
         mContext = getContext();
         switchChangedByFavorite = 0;
-        Toolbar toolbar = (Toolbar)view.findViewById(R.id.gauge_fragment_toolbar);
+        toolbar = (Toolbar)view.findViewById(R.id.gauge_fragment_toolbar);
         toolbar.inflateMenu(R.menu.gauge_fragment_toolbar_menu);
 
         toolbar.setNavigationIcon(getResources().getDrawable(R.drawable.baseline_arrow_back_black));
@@ -114,8 +217,6 @@ public class FragmentGauge extends Fragment {
         });
 
         Bundle bundle = this.getArguments();
-
-
 
         if(bundle != null){
             selectedGauge =(Gauge)bundle.get("selected_gauge");
