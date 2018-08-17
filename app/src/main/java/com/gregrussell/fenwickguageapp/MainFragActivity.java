@@ -86,6 +86,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
@@ -358,9 +359,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             public void onClick(View view) {
 
                 updateLocation(mContext,mFusedLocationClient);
-                UpdateLocationParams params = new UpdateLocationParams(mContext,mFusedLocationClient);
-                AsyncUpdateLocation asyncUpdateLocation = new AsyncUpdateLocation();
-                asyncUpdateLocation.execute(params);
+
                 clearViews(mContext,searchView,gaugeDataLayout);
             }
         });
@@ -1280,6 +1279,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 dbEmpty = true;
             }
 
+
+
             Context context = params[0].context;
             return new UpdateDBParams(context,dbEmpty);
         }
@@ -1369,6 +1370,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return xmlVersion;
         }
 
+
         /**
          *Downloads the source data from MY_URL and sends it to WeatherXmlParser for parsing
          * @return Returns a List of Gauges that has been parsed from the XML source data
@@ -1392,6 +1394,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     stream.close();
                 }
             }
+
+
             Log.d("downloadXML2","Finish, gauge list size: " + gaugeList.size());
             return gaugeList;
         }
@@ -1523,111 +1527,17 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-
-    /**
-     * Class used to store parameters needed for AsyncUpdateLocation
-     */
-    private class UpdateLocationParams{
-        private Context context;
-        private FusedLocationProviderClient providerClient;
-        private Location location;
-
-        private UpdateLocationParams(Context context, FusedLocationProviderClient providerClient){
-            this.context = context;
-            this.providerClient = providerClient;
-        }
-        private UpdateLocationParams(Context context, FusedLocationProviderClient providerClient, Location location){
-            this.context = context;
-            this.providerClient = providerClient;
-            this.location = location;
-        }
-
-        public Context getContext() {
-            return context;
-        }
-
-        public FusedLocationProviderClient getProviderClient() {
-            return providerClient;
-        }
-
-        public void setContext(Context context) {
-            this.context = context;
-        }
-
-        public void setLocation(Location location) {
-            this.location = location;
-        }
-
-        public Location getLocation() {
-            return location;
-        }
-
-        public void setProviderClient(FusedLocationProviderClient providerClient) {
-            this.providerClient = providerClient;
-        }
-    }
-
-    /**
-     * Async class used to update location when button is pressed
-     * Receives UpdateLocationParams and passes a new UpdateLocationParams to onPostExecute
-     * Waits for two seconds or for location to be updated using a background thread
-     * When the background task is complete, if static Location updatedLocation comes back null
-     * because it was not updated within two seconds, getLastKnownLocation is called and updatedLocation
-     * takes its value
-     * Camera is then moved to updatedLocation
-     *
-     */
-    private static class AsyncUpdateLocation extends AsyncTask<UpdateLocationParams,Void,UpdateLocationParams>{
-
-        @Override
-        protected UpdateLocationParams doInBackground(UpdateLocationParams... params){
-
-            UpdateLocationParams updateLocationParams = params[0];
-            Log.d("getLocationUpdate9Async",String.valueOf(updatedLocation));
-            Long future = System.currentTimeMillis() + 2000;
-            while(updatedLocation == null && System.currentTimeMillis()<future){
-                Log.d("getLocationUpdate9Async",String.valueOf(updatedLocation));
-            }
-
-            updateLocationParams.setLocation(updatedLocation);
-            return updateLocationParams;
-
-        }
-
-        @Override
-        protected void onPostExecute(UpdateLocationParams params){
-
-            Context context = params.getContext();
-            FusedLocationProviderClient providerClient = params.getProviderClient();
-            Location location = params.getLocation();
-            //only want location updates running until a location is found
-            stopLocationUpdates(providerClient);
-            if(location != null) {
-                Log.d("getLocationUpdate7Async", location.getLatitude() + ", " + location.getLongitude());
-            }
-            if(location == null){
-                Log.d("getLocationUpdate7Async", "ran out of time");
-                getLastKnownLocation(context,providerClient);
-                location = homeLocation;
-            }
-
-            LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-            moveCamera(latLng,latLng,CLOSEST_ZOOM);
-
-
-        }
-    }
-
     /**
      * Method used to start the process of updating the location by defining the LocationCallback
      * When LocationCallback mLocationCallback is called from startLocationUpdates(),
      * static Location updatedLocation gets updated with the most recent location obtained
-     * After defining LocationCallback, startLocationUpdates() is called
+     * After defining LocationCallback, startLocationUpdates() is called.
+     * Camera is moved to LastKnownLocation while location updates are being received.
      * @param context Activity Context that must be passed to startLocationUpdates()
      * @param mFusedLocationProviderClient FusedLocationProviderClient that must be passed to
      *                                     startLocationUpdates()
      */
-    private static void updateLocation(Context context, FusedLocationProviderClient mFusedLocationProviderClient) {
+    private static void updateLocation(Context context, final FusedLocationProviderClient mFusedLocationProviderClient) {
 
         mLocationCallback = new LocationCallback() {
             @Override
@@ -1645,11 +1555,16 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
                     Log.d("getLocationUpdateAsync",location.getLatitude() + ", " + location.getLongitude());
                     updatedLocation = location;
+                    stopLocationUpdates(mFusedLocationProviderClient);
                 }
             }
         };
 
         startLocationUpdates(context,mFusedLocationProviderClient);
+        getLastKnownLocation(context,mFusedLocationProviderClient);
+        Location location = homeLocation;
+        LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+        moveCamera(latLng,latLng,CLOSEST_ZOOM);
     }
 
     /**
@@ -1721,6 +1636,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
     }
+
+
+
 
 
 

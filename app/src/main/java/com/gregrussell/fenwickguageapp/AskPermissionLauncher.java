@@ -78,6 +78,7 @@ public class AskPermissionLauncher extends Activity {
 
                 Intent intent = new Intent(this,MainFragActivity.class);
                 startActivity(intent);
+                finish();
 
             }
         }
@@ -125,6 +126,7 @@ public class AskPermissionLauncher extends Activity {
                     Log.d("AskPermission14","---");
                     Intent intent = new Intent(this,MainFragActivity.class);
                     startActivity(intent);
+                    finish();
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
@@ -173,6 +175,7 @@ public class AskPermissionLauncher extends Activity {
                         public void onClick(DialogInterface dialogInterface, int i) {
                             Intent intent = new Intent(mContext,MainFragActivity.class);
                             startActivity(intent);
+                            getActivity().finish();
                         }
                     });
             return builder.create();

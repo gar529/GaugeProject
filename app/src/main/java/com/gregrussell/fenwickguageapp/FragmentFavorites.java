@@ -92,7 +92,7 @@ public class FragmentFavorites extends Fragment {
         });
         toolbar.setTitle(R.string.favorites);
 
-        ListView listView = (ListView)view.findViewById(R.id.favorite_list_view);
+        final ListView listView = (ListView)view.findViewById(R.id.favorite_list_view);
 
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -113,13 +113,14 @@ public class FragmentFavorites extends Fragment {
 
             }
         });
-        SwipeRefreshLayout swipeRefresh = (SwipeRefreshLayout)view.findViewById(R.id.swipe_refresh);
+        final SwipeRefreshLayout swipeRefresh = (SwipeRefreshLayout)view.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
 
+                LoadListParams params = new LoadListParams(getContext(),listView,swipeRefresh,null);
                 task = new LoadList();
-                task.execute();
+                task.execute(params);
 
             }
         });

@@ -62,111 +62,11 @@ public class FragmentGauge extends Fragment {
     static int switchChangedByFavorite;
 
 
-
-    @Override
-    public void onSaveInstanceState(Bundle bundle){
-        super.onSaveInstanceState(bundle);
-
-        bundle.putSerializable("selected_gauge",selectedGauge);
-        bundle.putSerializable("gauge",gauge);
-        bundle.putBoolean("isFavorite",isFavorite);
-        bundle.putBoolean("isNotifiable",isNotifiable);
-
-
-    }
-    @Override
-    public void onViewStateRestored(Bundle bundle){
-        super.onViewStateRestored(bundle);
-
-        if(bundle != null){
-            selectedGauge =(Gauge)bundle.get("selected_gauge");
-            gauge = (Gauge)bundle.get("gauge");
-            isFavorite = bundle.getBoolean("isFavorite");
-            isNotifiable = bundle.getBoolean("isNotifiable");
-            String gaugeName = gauge.getGaugeName();
-            toolbar.setTitle(gaugeName);
-
-            if(isFavorite){
-                favoriteButton.setSelected(true);
-            }else {
-                favoriteButton.setSelected(false);
-            }
-
-            if(NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
-
-                notificationSwitch.setEnabled(true);
-                if(isNotifiable){
-                    notificationSwitch.setChecked(true);
-                }else{
-                    notificationSwitch.setChecked(false);
-                }
-
-            }else{
-                notificationSwitch.setEnabled(false);
-                notificationSwitch.setChecked(false);
-            }
-
-
-        }
-
-    }
-
-
-
-    @Override
-    public void onResume(){
-        super.onResume();
-
-        Log.d("FragmentGauge","onResume");
-        Bundle bundle = this.getArguments();
-
-        Log.d("FragmentGauge1","bundle is " + String.valueOf(bundle));
-        if(bundle != null){
-            selectedGauge =(Gauge)bundle.get("selected_gauge");
-            gauge = (Gauge)bundle.get("gauge");
-            isFavorite = bundle.getBoolean("isFavorite");
-            isNotifiable = bundle.getBoolean("isNotifiable");
-            String gaugeName = gauge.getGaugeName();
-            toolbar.setTitle(gaugeName);
-
-            if(isFavorite){
-                favoriteButton.setSelected(true);
-            }else {
-                favoriteButton.setSelected(false);
-            }
-
-            if(NotificationManagerCompat.from(getContext()).areNotificationsEnabled()) {
-
-                notificationSwitch.setEnabled(true);
-                if(isNotifiable){
-                    notificationSwitch.setChecked(true);
-                }else{
-                    notificationSwitch.setChecked(false);
-                }
-
-            }else{
-                notificationSwitch.setEnabled(false);
-                notificationSwitch.setChecked(false);
-            }
-
-
-            progressBarLayout.setVisibility(View.VISIBLE);
-            GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,progressBarLayout,
-                    swipeRefreshLayout,null);
-            GetGaugeData getGaugeData = new GetGaugeData();
-            getGaugeData.execute(params);
-        }
-
-
-    }
-
-
-
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle onSavedInstanceState){
 
 
+        Log.d("FragmentGaugeOnCreate", "onCreate");
         view = inflater.inflate(R.layout.fragment_gauge_layout, container,false);
         mContext = getContext();
         switchChangedByFavorite = 0;
@@ -825,12 +725,14 @@ public class FragmentGauge extends Fragment {
 
         private String getFloodWarning(Context context, Sigstages sigstages, String waterHeight){
 
+            double actionDouble = 0.0;
             double minorDouble = 0.0;
             double majorDouble = 0.0;
             double moderateDouble = 0.0;
             double waterDouble = 0.0;
 
-            if(sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
+            if(sigstages.getMajor() == null && sigstages.getModerate() == null &&
+                    sigstages.getFlood() == null && sigstages.getAction() == null){
                 return "";
             }else {
 
@@ -845,35 +747,50 @@ public class FragmentGauge extends Fragment {
 
                     try {
                         majorDouble = Double.parseDouble(sigstages.getMajor());
+                        if(waterDouble >= majorDouble){
+                            return context.getResources().getString(R.string.major_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
 
-                    if(waterDouble >= majorDouble){
-                        return context.getResources().getString(R.string.major_flooding);
-                    }
+
                 }
 
                 if(sigstages.getModerate() !=null){
                     try{
                         moderateDouble = Double.parseDouble(sigstages.getModerate());
+                        if(waterDouble >= moderateDouble){
+                            return context.getResources().getString(R.string.moderate_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
-                    if(waterDouble >= moderateDouble){
-                        return context.getResources().getString(R.string.moderate_flooding);
-                    }
+
                 }
                 if(sigstages.getFlood() !=null){
 
                     try{
                         minorDouble = Double.parseDouble(sigstages.getFlood());
+                        if(waterDouble >= minorDouble){
+                            return context.getResources().getString(R.string.minor_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
-                    if(waterDouble >= minorDouble){
-                        return context.getResources().getString(R.string.minor_flooding);
+
+                }
+                if(sigstages.getAction() !=null){
+
+                    try{
+                        actionDouble = Double.parseDouble(sigstages.getAction());
+                        if(waterDouble >= actionDouble){
+                            return context.getResources().getString(R.string.action_flooding);
+                        }
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
                     }
+
                 }
 
 

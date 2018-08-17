@@ -16,7 +16,7 @@ public class StartAlarmAtBoot extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent){
 
-        Log.d("broadcast",intent.getAction());
+        Log.i("broadcastStartAlarm",intent.getAction());
 
         if(intent.getAction().equals("android.intent.action.BOOT_COMPLETED")) {
 

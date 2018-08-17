@@ -21,6 +21,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -135,13 +136,23 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
 
             GaugeData gaugeData = new GaugeData(gauge.getGaugeID());
-            GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
-            Datum datum = new Datum();
+            //GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
+            RSSParsedObj rssParsed = gaugeData.getRssData();
+
+            //Datum datum = new Datum();
             String waterHeight = "";
             String primary =  "";
-            Log.d("favoriteS1",String.valueOf(gaugeReadParseObject));
-            Log.d("favoriteS2",String.valueOf(gaugeReadParseObject.getDatumList()));
-            if(gaugeReadParseObject.getDatumList() != null) {
+            //Log.d("favoriteS1",String.valueOf(gaugeReadParseObject));
+            //Log.d("favoriteS2",String.valueOf(gaugeReadParseObject.getDatumList()));
+
+            waterHeight = rssParsed.getStage();
+            String date = convertRssDate(rssParsed.getTime());
+
+
+
+
+
+            /*if(gaugeReadParseObject.getDatumList() != null) {
                 if (gaugeReadParseObject.getDatumList().size() > 0) {
 
                     datum = gaugeReadParseObject.getDatumList().get(0);
@@ -158,10 +169,14 @@ public class FavoritesListViewAdapter extends BaseAdapter {
                 waterHeight = datum.getPrimary();
             }
 
-            String valid = datum.getValid();
+            String valid = datum.getValid();*/
 
-            String floodWarning = getFloodWarning(context,gaugeReadParseObject.getSigstages(),primary);
-            String date = convertToDate(valid);
+
+            Sigstages sigstages = new Sigstages(rssParsed.getAction(),rssParsed.getMinor(),rssParsed.getModerate(),rssParsed.getMajor());
+            //String floodWarning = getFloodWarning(context,gaugeReadParseObject.getSigstages(),primary);
+            String floodWarning = getFloodWarning(context,sigstages,waterHeight);
+
+            //String date = convertToDate(valid);
 
             Log.d("FavoritesAdapter14",waterHeight);
 
@@ -237,6 +252,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
         private String getFloodWarning(Context mContext, Sigstages sigstages, String waterHeight){
 
+            double actionDouble = 0.0;
             double minorDouble = 0.0;
             double majorDouble = 0.0;
             double moderateDouble = 0.0;
@@ -245,7 +261,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
             if(sigstages == null){
                 return "";
             }
-            if(sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
+            if(sigstages.getAction() == null && sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
                 return "";
             }else {
 
@@ -290,11 +306,49 @@ public class FavoritesListViewAdapter extends BaseAdapter {
                         return mContext.getResources().getString(R.string.minor_flooding);
                     }
                 }
+                if(sigstages.getAction() !=null){
+
+                    try{
+                        actionDouble = Double.parseDouble(sigstages.getAction());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                    if(waterDouble >= actionDouble){
+                        return mContext.getResources().getString(R.string.minor_flooding);
+                    }
+                }
+
 
 
             }
             return "";
 
+        }
+
+        private String convertRssDate(String dateString){
+
+            if (dateString.equals("")) {
+                return "";
+            }
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy h:mm a");
+            Date convertedDate = new Date();
+            try {
+                convertedDate = dateFormat.parse(dateString);
+            } catch (ParseException e) {
+
+            } catch (NullPointerException e) {
+
+            }
+            SimpleDateFormat myFormat = new SimpleDateFormat("MMM dd h:mma");
+            TimeZone tz = TimeZone.getDefault();
+            Date now = new Date();
+            int offsetFromUtc = tz.getOffset(now.getTime());
+
+            long offset = convertedDate.getTime() + offsetFromUtc;
+
+            Date correctTZDate = new Date(offset);
+
+            return myFormat.format(convertedDate);
         }
 
         private String convertToDate(String valid){

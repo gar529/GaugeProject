@@ -69,37 +69,7 @@ public class GaugeApplication extends Application {
 
         }
 
-        if ( isExternalStorageWritable() ) {
-
-            Log.d("logger","logging");
-
-            File appDirectory = new File( Environment.getExternalStorageDirectory() + "/GaugeProjectLogs" );
-            File logDirectory = new File( appDirectory + "/log" );
-            File logFile = new File( logDirectory, "logcat" + System.currentTimeMillis() + ".txt" );
-
-            // create app folder
-            if ( !appDirectory.exists() ) {
-                appDirectory.mkdir();
-            }
-
-            // create log folder
-            if ( !logDirectory.exists() ) {
-                logDirectory.mkdir();
-            }
-
-            // clear the previous logcat and then write the new one to the file
-            try {
-                Process process = Runtime.getRuntime().exec("logcat -c");
-                process = Runtime.getRuntime().exec("logcat -f " + logFile + " *:I");
-            } catch ( IOException e ) {
-                e.printStackTrace();
-            }
-
-        } else if ( isExternalStorageReadable() ) {
-            // only readable
-        } else {
-            // not accessible
-        }
+        logger();
 
         ComponentName receiver = new ComponentName(this, StartAlarmAtBoot.class);
         PackageManager pm = this.getPackageManager();
@@ -115,10 +85,8 @@ public class GaugeApplication extends Application {
         PendingIntent alarmIntent = PendingIntent.getBroadcast(this,0,intent,0);
         intent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
 
-        if(Build.VERSION.SDK_INT >= 23) {
-            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + FIFTEEN_MINUTES_MILLIS, alarmIntent);
-        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
-            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            alarmMgr.setWindow(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + FIFTEEN_MINUTES_MILLIS, UPPER_BOUND_MILLIS - FIFTEEN_MINUTES_MILLIS, alarmIntent);
         }else{
             Random random = new Random();
             int randomTimeMillis = random.nextInt(UPPER_BOUND_MILLIS - LOWER_BOUND_MILLIS) + LOWER_BOUND_MILLIS;
@@ -151,7 +119,7 @@ public class GaugeApplication extends Application {
             // clear the previous logcat and then write the new one to the file
             try {
                 Process process = Runtime.getRuntime().exec("logcat -c");
-                process = Runtime.getRuntime().exec("logcat -f " + logFile);
+                process = Runtime.getRuntime().exec("logcat -f " + logFile + " *:I");
             } catch ( IOException e ) {
                 e.printStackTrace();
             }

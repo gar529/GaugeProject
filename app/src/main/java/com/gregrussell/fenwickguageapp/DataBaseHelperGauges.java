@@ -20,6 +20,8 @@ import com.google.android.gms.maps.model.Marker;
 
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -283,9 +285,11 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
                 statement.executeInsert();
             }
             db.setTransactionSuccessful();
-        }catch (Exception e){
-            Log.d("addGauges4","didn't work");
-            e.printStackTrace();
+        }catch (SQLiteException e){
+            StringWriter error = new StringWriter();
+            e.printStackTrace(new PrintWriter(error));
+            Log.d("addGauges",error.toString());
+
         }finally {
             db.endTransaction();
         }
@@ -317,8 +321,8 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             }
             db.setTransactionSuccessful();
         }catch (Exception e){
-            Log.d("addMarkers4","didn't work");
-            e.printStackTrace();
+            Log.d("addMarkers",e.getMessage());
+
         }finally {
             db.endTransaction();
         }
@@ -365,8 +369,9 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             statement.bindString(1,identifier);
             idInTable = statement.simpleQueryForString();
         }catch (Exception e){
-            e.printStackTrace();
-            Log.d("markersAdded8", "IN DB, EXCEPTION RETURN");
+            StringWriter error = new StringWriter();
+            e.printStackTrace(new PrintWriter(error));
+            Log.d("checkMarkerExists",error.toString());
             return false;
         }finally {
         db.endTransaction();
@@ -427,8 +432,9 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             }
             db.setTransactionSuccessful();
         }catch (Exception e){
-            Log.d("addGauges12","didn't work");
-            e.printStackTrace();
+            StringWriter error = new StringWriter();
+            e.printStackTrace(new PrintWriter(error));
+            Log.d("addSuggestions",error.toString());
         }finally {
             db.endTransaction();
         }
@@ -536,8 +542,10 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             statement.bindString(1,gauge.getGaugeID());
             idInTable = statement.simpleQueryForString();
             Log.d("isFavorite2",idInTable);
-        }catch (Exception e){
-            e.printStackTrace();
+        }catch (SQLiteException e){
+            StringWriter error = new StringWriter();
+            e.printStackTrace(new PrintWriter(error));
+            Log.d("isFavorite",error.toString());
             return false;
         }finally {
             db.endTransaction();
@@ -635,7 +643,10 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         try{
             notification = cursor.getInt(GaugeApplication.FAVORITES_NOTIFICATION_POSITION);
         }catch (SQLiteException e){
-            e.printStackTrace();
+            StringWriter error = new StringWriter();
+            e.printStackTrace(new PrintWriter(error));
+            Log.d("getFaveNotificationStat",error.toString());
+
         }
 
         return notification;
