@@ -2,8 +2,10 @@ package com.gregrussell.fenwickguageapp;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -154,7 +157,6 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
             /*if(gaugeReadParseObject.getDatumList() != null) {
                 if (gaugeReadParseObject.getDatumList().size() > 0) {
-
                     datum = gaugeReadParseObject.getDatumList().get(0);
                     primary = datum.getPrimary();
                     waterHeight = primary + context.getResources().getString(R.string.feet_unit);
@@ -168,7 +170,6 @@ public class FavoritesListViewAdapter extends BaseAdapter {
                 datum.setPrimary("No Data");
                 waterHeight = datum.getPrimary();
             }
-
             String valid = datum.getValid();*/
 
 
@@ -242,11 +243,54 @@ public class FavoritesListViewAdapter extends BaseAdapter {
                 floodWarningTextView.setText(params.floodWarning);
             }
             dateTextView.setText(params.date);
-            waterHeightTextView.setText(params.waterHeight);
+            if(!params.waterHeight.equals("")) {
+                waterHeightTextView.setText(addUnits(context, params.waterHeight));
+            }else{
+                waterHeightTextView.setText(context.getResources().getString(R.string.no_data_short));
+            }
             loadingPanel.setVisibility(View.GONE);
 
 
             Log.d("FavoritesAdapter7", "Async Done");
+
+        }
+
+
+
+        private String addUnits(Context context, String waterHeight){
+
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+
+            int unit = Integer.parseInt(unitsPref);
+
+            switch (unit){
+                case GaugeApplication.FEET:
+                    return convertToFeet(context, waterHeight);
+                case GaugeApplication.METERS:
+                    return convertToMeters(context, waterHeight);
+                default:
+                    return "";
+            }
+
+
+
+        }
+
+        private String convertToFeet(Context context, String waterHeight){
+
+            double feetDouble = Double.parseDouble(waterHeight);
+            return String.format("%.2f",feetDouble) + context.getResources().getString(R.string.feet_unit);
+        }
+
+        private String convertToMeters(Context context, String waterHeight){
+
+            double meterConverter = .3048;
+            double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+            String meterString = String.valueOf(meterDouble);
+            return String.format("%.2f",meterDouble) + context.getResources().getString(R.string.meter_unit);
+
+
 
         }
 
@@ -276,50 +320,51 @@ public class FavoritesListViewAdapter extends BaseAdapter {
 
                     try {
                         majorDouble = Double.parseDouble(sigstages.getMajor());
+                        if(waterDouble >= majorDouble){
+                            return mContext.getResources().getString(R.string.major_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
 
-                    if(waterDouble >= majorDouble){
-                        return mContext.getResources().getString(R.string.major_flooding);
-                    }
+
                 }
 
                 if(sigstages.getModerate() !=null){
                     try{
                         moderateDouble = Double.parseDouble(sigstages.getModerate());
+                        if(waterDouble >= moderateDouble){
+                            return mContext.getResources().getString(R.string.moderate_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
-                    if(waterDouble >= moderateDouble){
-                        return mContext.getResources().getString(R.string.moderate_flooding);
-                    }
+
                 }
                 if(sigstages.getFlood() !=null){
 
                     try{
                         minorDouble = Double.parseDouble(sigstages.getFlood());
+                        if(waterDouble >= minorDouble){
+                            return mContext.getResources().getString(R.string.minor_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
-                    if(waterDouble >= minorDouble){
-                        return mContext.getResources().getString(R.string.minor_flooding);
-                    }
+
                 }
                 if(sigstages.getAction() !=null){
 
                     try{
                         actionDouble = Double.parseDouble(sigstages.getAction());
+                        if(waterDouble >= actionDouble){
+                            return mContext.getResources().getString(R.string.minor_flooding);
+                        }
                     }catch (NumberFormatException e){
                         e.printStackTrace();
                     }
-                    if(waterDouble >= actionDouble){
-                        return mContext.getResources().getString(R.string.minor_flooding);
-                    }
+
                 }
-
-
-
             }
             return "";
 

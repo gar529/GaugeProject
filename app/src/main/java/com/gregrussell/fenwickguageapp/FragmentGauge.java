@@ -1,9 +1,14 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.SQLException;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -63,7 +68,7 @@ public class FragmentGauge extends Fragment {
 
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle onSavedInstanceState){
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container, Bundle onSavedInstanceState){
 
 
         Log.d("FragmentGaugeOnCreate", "onCreate");
@@ -76,13 +81,18 @@ public class FragmentGauge extends Fragment {
         toolbar.setNavigationIcon(getResources().getDrawable(R.drawable.baseline_arrow_back_black));
 
 
+
         //RelativeLayout view2 = (RelativeLayout)view.findViewById(R.id.action_gauge_frag_favorite);
         notificationSwitch = ((RelativeLayout)view.findViewById(R.id.action_gauge_frag_switch)).findViewById(R.id.switch_layout_switch);
         favoriteButton = ((RelativeLayout)view.findViewById(R.id.action_gauge_frag_favorite)).findViewById(R.id.gauge_frag_favorite_button);
         listView = (ListView)view.findViewById(R.id.fragment_gauge_list);
         progressBarLayout = (RelativeLayout)view.findViewById(R.id.fragment_gauge_progress_bar_layout);
         swipeRefreshLayout = (SwipeRefreshLayout)view.findViewById(R.id.fragment_gauge_swipe_refresh);
-        MenuItem item = toolbar.getMenu().findItem(R.id.action_gauge_frag_favorite);
+
+
+
+
+
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(AbsListView absListView, int i) {
@@ -116,7 +126,7 @@ public class FragmentGauge extends Fragment {
             }
         });
 
-        Bundle bundle = this.getArguments();
+        final Bundle bundle = this.getArguments();
 
         if(bundle != null){
             selectedGauge =(Gauge)bundle.get("selected_gauge");
@@ -181,11 +191,17 @@ public class FragmentGauge extends Fragment {
                     task.execute(params);
 
                 }else{
-                    favoriteButton.setSelected(true);
-                    Log.d("fragGauge1",String.valueOf(gauge));
-                    FavoriteParams params = new FavoriteParams(mContext,notificationSwitch);
-                    AddFavorite task = new AddFavorite();
-                    task.execute(params);
+                    if(GaugeApplication.myDBHelper.getFavoritesCount() < 10) {
+                        favoriteButton.setSelected(true);
+                        Log.d("fragGauge1", String.valueOf(gauge));
+                        FavoriteParams params = new FavoriteParams(mContext, notificationSwitch);
+                        AddFavorite task = new AddFavorite();
+                        task.execute(params);
+                    }else{
+                        CharSequence text = getContext().getResources().getString(R.string.favorite_limit);
+                        Toast toast = Toast.makeText(getContext(),text,Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
                 }
             }
         });
@@ -198,7 +214,47 @@ public class FragmentGauge extends Fragment {
 
         //gaugeName
 
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
 
+                switch (item.getItemId()){
+                    case R.id.action_settings:
+
+                        /*Intent intent = new Intent();
+                        intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        Uri uri = Uri.fromParts("package", getContext().getPackageName(), null);
+                        intent.setData(uri);
+                        startActivity(intent);*/
+
+                        /*if(bundle != null){
+                            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            SettingsContainerFragment settingsFragment = new SettingsContainerFragment();
+                            settingsFragment.setArguments(bundle);
+                            fragmentTransaction.replace(R.id.main_layout, settingsFragment, "settings_container_fragment").commit();
+                        }else{
+                            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentTransaction.replace(R.id.main_layout, new SettingsContainerFragment(), "settings_container_fragment").commit();
+                        }*/
+
+                        Intent intent = new Intent(getActivity(),SettingsActivity.class);
+                        startActivity(intent);
+
+
+
+
+
+                        return true;
+
+                    default:
+
+                        return false;
+                }
+
+            }
+        });
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -212,6 +268,7 @@ public class FragmentGauge extends Fragment {
                     loadGaugeFragment.setArguments(bundle);
                     fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                 }
+                Log.d("backpressed9,", String.valueOf(selectedGauge));
                 fragmentTransaction.remove(fragmentManager.findFragmentByTag("gauge_fragment"));
                 fragmentTransaction.commit();
                 if(fragmentManager.getBackStackEntryCount() > 0){
@@ -225,15 +282,23 @@ public class FragmentGauge extends Fragment {
 
 
         progressBarLayout.setVisibility(View.VISIBLE);
-        GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,progressBarLayout,
-                swipeRefreshLayout,null);
-        GetGaugeData getGaugeData = new GetGaugeData();
-        getGaugeData.execute(params);
+
 
 
 
 
         return view;
+    }
+
+    @Override
+    public void onStart(){
+        super.onStart();
+
+        Log.d("FragmentGauge","onStart");
+        GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,progressBarLayout,
+                swipeRefreshLayout,null);
+        GetGaugeData getGaugeData = new GetGaugeData();
+        getGaugeData.execute(params);
     }
 
     private void enableNotifications(boolean enable){
@@ -431,6 +496,7 @@ public class FragmentGauge extends Fragment {
             TextView lowDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_low_date);
 
             if(gaugeReadParseObject!=null && gaugeReadParseObject.getDatumList() !=null && gaugeReadParseObject.getDatumList().size() > 0){
+                GaugeApplication gaugeApplication = new GaugeApplication();
                 List<Datum>datumList = gaugeReadParseObject.getDatumList();
                 String currentStageText = addUnits(context,gaugeReadParseObject.getDatumList().get(0).getPrimary());
                 String currentDateText = convertDate(gaugeReadParseObject.getDatumList().get(0).getValid());
@@ -491,6 +557,43 @@ public class FragmentGauge extends Fragment {
 
         }
 
+        private String addUnits(Context context, String waterHeight){
+
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+
+            int unit = Integer.parseInt(unitsPref);
+
+            switch (unit){
+                case GaugeApplication.FEET:
+                    return convertToFeet(context, waterHeight);
+                case GaugeApplication.METERS:
+                    return convertToMeters(context, waterHeight);
+                default:
+                    return "";
+            }
+
+
+
+        }
+
+        private String convertToFeet(Context context, String waterHeight){
+
+            double feetDouble = Double.parseDouble(waterHeight);
+            return String.format("%.2f",feetDouble) + context.getResources().getString(R.string.feet_unit);
+        }
+
+        private String convertToMeters(Context context, String waterHeight){
+
+            double meterConverter = .3048;
+            double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+            String meterString = String.valueOf(meterDouble);
+            return String.format("%.2f",meterDouble) + context.getResources().getString(R.string.meter_unit);
+
+
+
+        }
+
         private List<Datum> filterList(List<Datum> datumList, int filter){
 
             Date currentDate = Calendar.getInstance().getTime();
@@ -513,21 +616,23 @@ public class FragmentGauge extends Fragment {
 
 
             List<Datum> filteredList = new ArrayList<Datum>();
-            for(int i =0; i<datumList.size();i++){
+            if(datumList!=null) {
+                for (int i = 0; i < datumList.size(); i++) {
 
-                Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
-                Long difference = currentDateMillis - dateInMillis;
-                Log.d("dateInListIssue2", "difference is: " + difference / 1000 / 60 / 60 + " day in millis is: " + DAY_IN_MILLIS / 1000 / 60 / 60);
-                if(difference <= DAY_IN_MILLIS){
-                    filteredList.add(datumList.get(i));
-                    DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
-                    Date current = new Date(currentDateMillis);
-                    Date data = new Date(dateInMillis);
-                    String dateString = formatter.format(current);
-                    String dateString1 = formatter.format(data);
+                    Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
+                    Long difference = currentDateMillis - dateInMillis;
+                    Log.d("dateInListIssue2", "difference is: " + difference / 1000 / 60 / 60 + " day in millis is: " + DAY_IN_MILLIS / 1000 / 60 / 60);
+                    if (difference <= DAY_IN_MILLIS) {
+                        filteredList.add(datumList.get(i));
+                        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
+                        Date current = new Date(currentDateMillis);
+                        Date data = new Date(dateInMillis);
+                        String dateString = formatter.format(current);
+                        String dateString1 = formatter.format(data);
 
 
-                    Log.d("dateInListIssue1",  "current time: " + dateString + " time added: " + dateString1);
+                        Log.d("dateInListIssue1", "current time: " + dateString + " time added: " + dateString1);
+                    }
                 }
             }
 
@@ -540,12 +645,14 @@ public class FragmentGauge extends Fragment {
         private List<Datum> filterTwoDays(List<Datum> datumList, Long currentDateMillis){
 
             List<Datum> filteredList = new ArrayList<Datum>();
-            for(int i =0; i<datumList.size();i++){
+            if(datumList!=null) {
+                for (int i = 0; i < datumList.size(); i++) {
 
-                Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
-                Long difference = currentDateMillis - dateInMillis;
-                if(difference <= DAY_IN_MILLIS * 2){
-                    filteredList.add(datumList.get(i));
+                    Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
+                    Long difference = currentDateMillis - dateInMillis;
+                    if (difference <= DAY_IN_MILLIS * 2) {
+                        filteredList.add(datumList.get(i));
+                    }
                 }
             }
 
@@ -621,11 +728,6 @@ public class FragmentGauge extends Fragment {
         }
 
 
-        private String addUnits(Context context, String stage){
-
-            return stage +  context.getResources().getString(R.string.feet_unit);
-
-        }
 
 
         private class DataBound{

@@ -200,6 +200,11 @@ public class RSSParser {
             int colon = description.indexOf(":", start);
             String stage = description.substring(colon + 1, end);
             Log.d("rssParserStage", stage.trim());
+            try{
+                String.format("%02d",stage);
+            }catch (Exception e){
+
+            }
             return stage.trim();
         }catch (Exception e){
             return "";

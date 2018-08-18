@@ -1,8 +1,10 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.util.TypedValue;
@@ -62,11 +64,19 @@ public class LoadGaugeFragment  extends Fragment {
                         RemoveFavorite task = new RemoveFavorite();
                         task.execute(context);
                     }else{
-                        favoriteButton.setSelected(true);
 
 
-                        AddFavorite task = new AddFavorite();
-                        task.execute(context);
+                        if(GaugeApplication.myDBHelper.getFavoritesCount() < 10) {
+                            favoriteButton.setSelected(true);
+
+
+                            AddFavorite task = new AddFavorite();
+                            task.execute(context);
+                        }else{
+                            CharSequence text = getContext().getResources().getString(R.string.favorite_limit);
+                            Toast toast = Toast.makeText(getContext(),text,Toast.LENGTH_SHORT);
+                            toast.show();
+                        }
 
                     }
                 }
@@ -199,7 +209,7 @@ public class LoadGaugeFragment  extends Fragment {
 
 
                 String gaugeName = gauge.getGaugeName();
-                String water = rssParsedObj.getStage() + context.getResources().getString(R.string.feet_unit);
+                String water = addUnits(context,rssParsedObj.getStage());
 
 
                 Log.d("onPostExecute result", "valid is: " + rssParsedObj.getTime() + " primary is: " + rssParsedObj.getStage());
@@ -219,6 +229,45 @@ public class LoadGaugeFragment  extends Fragment {
                 gaugeText.setVisibility(View.VISIBLE);
             }
         }
+
+        private String addUnits(Context context, String waterHeight){
+
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+
+            int unit = Integer.parseInt(unitsPref);
+
+            switch (unit){
+                case GaugeApplication.FEET:
+                    return convertToFeet(context, waterHeight);
+                case GaugeApplication.METERS:
+                    return convertToMeters(context, waterHeight);
+                default:
+                    return "";
+            }
+
+
+
+        }
+
+        private String convertToFeet(Context context, String waterHeight){
+
+            double feetDouble = Double.parseDouble(waterHeight);
+            return String.format("%.2f",feetDouble) + context.getResources().getString(R.string.feet_unit);
+        }
+
+        private String convertToMeters(Context context, String waterHeight){
+
+            double meterConverter = .3048;
+            double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+            String meterString = String.valueOf(meterDouble);
+            return String.format("%.2f",meterDouble) + context.getResources().getString(R.string.meter_unit);
+
+
+
+        }
+
+
 
     /*private String convertDate(String dateString){
         //String dateString = "2018-08-10T12:05:00-00:00";

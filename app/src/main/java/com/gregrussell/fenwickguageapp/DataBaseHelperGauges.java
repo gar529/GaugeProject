@@ -224,7 +224,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
     public void openDataBase() throws  SQLiteException{
         String myPath = DATABASE_PATH + DATABASE_NAME;
         Log.d("databasehelper4", myPath);
-       myDataBase = SQLiteDatabase.openDatabase(myPath,null,SQLiteDatabase.OPEN_READONLY);
+        myDataBase = SQLiteDatabase.openDatabase(myPath,null,SQLiteDatabase.OPEN_READONLY);
     }
 
     @Override
@@ -374,7 +374,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
             Log.d("checkMarkerExists",error.toString());
             return false;
         }finally {
-        db.endTransaction();
+            db.endTransaction();
         }
         if(idInTable.toUpperCase().equals(identifier.toUpperCase())){
             Log.d("markersAdded9", "IN DB, RETURN TRUE: id in table: " + idInTable.toUpperCase() + ",  id: " + identifier.toUpperCase());
@@ -566,6 +566,7 @@ public class DataBaseHelperGauges extends SQLiteOpenHelper{
         Cursor cursor = db.rawQuery(query,null);
         int count = cursor.getCount();
         cursor.close();
+        Log.d("favoriteCount","count is: " + count);
         return count;
     }
 

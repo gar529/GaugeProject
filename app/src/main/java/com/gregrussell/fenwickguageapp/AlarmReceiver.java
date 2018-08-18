@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.SQLException;
 import android.location.Location;
@@ -15,6 +16,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
@@ -321,7 +323,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                 int floodWarning = getFloodWarning(sigstages,stage);
                 if(floodWarning > -1){
                     FloodedGauge floodedGauge = new FloodedGauge(faveGaugeList.get(i).getGaugeName(),
-                            rssParsedObj.getStage() + units,convertToDate(rssParsedObj.getTime()),floodWarning);
+                            addUnits(rssParsedObj.getStage()),convertToDate(rssParsedObj.getTime()),floodWarning);
                     floodList.add(floodedGauge);
                 }
 
@@ -329,6 +331,43 @@ public class AlarmReceiver extends BroadcastReceiver {
 
 
             return floodList;
+
+        }
+
+        private String addUnits(String waterHeight){
+
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(mContext);
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+
+            int unit = Integer.parseInt(unitsPref);
+
+            switch (unit){
+                case GaugeApplication.FEET:
+                    return convertToFeet(mContext, waterHeight);
+                case GaugeApplication.METERS:
+                    return convertToMeters(mContext, waterHeight);
+                default:
+                    return "";
+            }
+
+
+
+        }
+
+        private String convertToFeet(Context mContext, String waterHeight){
+
+            double feetDouble = Double.parseDouble(waterHeight);
+            return String.format("%.2f",feetDouble) + mContext.getResources().getString(R.string.feet_unit);
+        }
+
+        private String convertToMeters(Context mContext, String waterHeight){
+
+            double meterConverter = .3048;
+            double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+            String meterString = String.valueOf(meterDouble);
+            return String.format("%.2f",meterDouble) + mContext.getResources().getString(R.string.meter_unit);
+
+
 
         }
 

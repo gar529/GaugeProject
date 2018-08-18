@@ -295,6 +295,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("shared",sPref);
         updateConnectedFlags();
 
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        String syncConnPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+        Log.d("settings",String.valueOf(syncConnPref));
+
         invisibleLayout = (RelativeLayout) findViewById(R.id.invisible_layout);
         invisibleLayout.setVisibility(View.GONE);
         gaugeDataLayout = (LinearLayout) findViewById(R.id.gauge_data_layout);
@@ -530,7 +534,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 if (dataString != null) {
                     Log.d("intent20", dataString);
 
-                    MoveLocationParams params = new MoveLocationParams(dataString,null,gaugeDataLayout,getSupportFragmentManager());
+                    MoveLocationParams params = new MoveLocationParams(this,dataString,null,gaugeDataLayout,getSupportFragmentManager());
                     MoveToLocation task = new MoveToLocation();
                     task.execute(params);
 
@@ -699,7 +703,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                 position(myLatLng).icon(BitmapDescriptorFactory.
-                defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
         myLocationMarker.setTag(null);
         loadInitialMarkers();
         mMap.setOnCameraMoveStartedListener(new GoogleMap.OnCameraMoveStartedListener() {
@@ -830,7 +834,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 //add markers
                 Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                         position(myLatLng).icon(BitmapDescriptorFactory.
-                        defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                        fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
                 myLocationMarker.setTag(null);
                 if(mZoom == zoomLevel[0]){
                     List<Gauge> mList = gaugeListArray[0];
@@ -1052,6 +1056,28 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         return resizedBitmap;
     }
 
+    private static Bitmap homeMarkerBitmap(Context context){
+
+        Log.d("bitmap1","start");
+        //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
+
+        Drawable drawable = context.getResources().getDrawable(R.drawable.marker_circle_home);
+        if(drawable instanceof  BitmapDrawable){
+            //  Log.d("mapPosition7", "bitmap drawable");
+            return ((BitmapDrawable)drawable).getBitmap();
+        }
+
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0,0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+
+        //Log.d("mapPosition5", "bitmap value: " + String.valueOf(bitmap));
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 60, 60, false);
+        Log.d("bitmap2","finish");
+        return resizedBitmap;
+    }
+
     @Override
     public boolean onMarkerClick(final Marker marker){
 
@@ -1153,11 +1179,13 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
 
     private static class MoveLocationParams{
+        Context context;
         String id;
         Gauge gauge;
         LinearLayout gaugeDataLayout;
         FragmentManager fragmentManager;
-        private MoveLocationParams(String id, Gauge gauge, LinearLayout gaugeDataLayout, FragmentManager fragmentManager){
+        private MoveLocationParams(Context context, String id, Gauge gauge, LinearLayout gaugeDataLayout, FragmentManager fragmentManager){
+            this.context = context;
             this.id = id;
             this.gauge = gauge;
             this.gaugeDataLayout = gaugeDataLayout;
@@ -1173,12 +1201,13 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         @Override
         protected MoveLocationParams doInBackground(MoveLocationParams... params){
 
+            Context context = params[0].context;
             String id = params[0].id;
             LinearLayout gaugeDataLayout = params[0].gaugeDataLayout;
             FragmentManager fragmentManager = params[0].fragmentManager;
             Gauge gauge = GaugeApplication.myDBHelper.getLocationFromIdentifier(id);
             if(gauge.getGaugeName() != null){
-                return new MoveLocationParams(id,gauge,gaugeDataLayout,fragmentManager);
+                return new MoveLocationParams(context,id,gauge,gaugeDataLayout,fragmentManager);
             }
             return null;
         }
@@ -1197,8 +1226,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 selectedMarker = null;
                 GaugeApplication.myDBHelper.clearMarkers();
                 Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                        position(myLatLng).icon(BitmapDescriptorFactory.
-                        defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                        position(myLatLng).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(moveLocationParams.context))).title("My Location"));
                 myLocationMarker.setTag(null);
 
                 Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude())).title(gauge.getGaugeName()));
@@ -1563,8 +1591,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         startLocationUpdates(context,mFusedLocationProviderClient);
         getLastKnownLocation(context,mFusedLocationProviderClient);
         Location location = homeLocation;
+        myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
         LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-        moveCamera(latLng,latLng,CLOSEST_ZOOM);
+        moveCamera(context,latLng,latLng,CLOSEST_ZOOM);
     }
 
     /**
@@ -1600,15 +1629,14 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      * @param zoom Floating point that represents the zoom level of the camera
      */
 
-    private static void moveCamera(LatLng homeLatLngPos, LatLng targetLatLngPos, float zoom){
+    private static void moveCamera(Context context, LatLng homeLatLngPos, LatLng targetLatLngPos, float zoom){
 
         mMap.clear();
         markerList.clear();
         selectedMarker = null;
         GaugeApplication.myDBHelper.clearMarkers();
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                position(homeLatLngPos).icon(BitmapDescriptorFactory.
-                defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                position(homeLatLngPos).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(context))).title("My Location"));
         myLocationMarker.setTag(null);
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(targetLatLngPos, zoom));
 
