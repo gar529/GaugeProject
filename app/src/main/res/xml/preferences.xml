@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    >
+
+    <PreferenceCategory
+        android:title="@string/settings_category_title"
+        android:key="settings_key">
+
+
+        <Preference android:title="@string/permissions"
+            android:key="@string/settings_pref_key">
+
+        </Preference>
+        <ListPreference
+
+            android:key="pref_units"
+            android:title="@string/units"
+            android:summary="@string/units_summary"
+            android:dialogTitle="@string/units_summary"
+            android:entries="@array/pref_list_entries"
+            android:entryValues="@array/pref_list_values"
+            android:defaultValue="0"
+            />
+    </PreferenceCategory>
+</PreferenceScreen>

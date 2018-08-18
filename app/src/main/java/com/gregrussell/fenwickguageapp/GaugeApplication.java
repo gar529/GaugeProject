@@ -8,11 +8,13 @@ import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.SQLException;
 import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
@@ -47,6 +49,10 @@ public class GaugeApplication extends Application {
     public static final int FIFTEEN_MINUTES_MILLIS = 1000 * 60 * 15;
     public static final int LOWER_BOUND_MILLIS = 1000 * 60 * 12;
     public static final int UPPER_BOUND_MILLIS = 1000 * 60 * 17;
+
+    public static final int FEET = 0;
+    public static final int METERS = 1;
+
 
 
 
@@ -169,6 +175,8 @@ public class GaugeApplication extends Application {
             notificationManager.createNotificationChannel(channel);
         }
     }
+
+
 
 
 

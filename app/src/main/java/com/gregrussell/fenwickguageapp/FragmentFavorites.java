@@ -1,6 +1,7 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.content.Context;
+import android.content.Intent;
 import android.database.SQLException;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -29,7 +30,8 @@ public class FragmentFavorites extends Fragment {
 
     private LoadList task;
     private Gauge selectedGauge;
-
+    SwipeRefreshLayout swipeRefresh;
+    ListView listView;
 
 
 
@@ -66,7 +68,20 @@ public class FragmentFavorites extends Fragment {
                 return false;
             }
         });
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
 
+                switch (item.getItemId()){
+                    case R.id.action_settings:
+                        Intent intent = new Intent(getActivity(),SettingsActivity.class);
+                        startActivity(intent);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
         toolbar.setNavigationIcon(getResources().getDrawable(R.drawable.baseline_arrow_back_black));
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
@@ -92,7 +107,7 @@ public class FragmentFavorites extends Fragment {
         });
         toolbar.setTitle(R.string.favorites);
 
-        final ListView listView = (ListView)view.findViewById(R.id.favorite_list_view);
+        listView = (ListView)view.findViewById(R.id.favorite_list_view);
 
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -113,7 +128,7 @@ public class FragmentFavorites extends Fragment {
 
             }
         });
-        final SwipeRefreshLayout swipeRefresh = (SwipeRefreshLayout)view.findViewById(R.id.swipe_refresh);
+        swipeRefresh = (SwipeRefreshLayout)view.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -125,11 +140,18 @@ public class FragmentFavorites extends Fragment {
             }
         });
 
+
+
+        return view;
+    }
+
+    @Override
+    public void onStart(){
+        super.onStart();
+
         LoadListParams params = new LoadListParams(getContext(),listView,swipeRefresh,null);
         task = new LoadList();
         task.execute(params);
-
-        return view;
     }
 
     private static class LoadListParams{

@@ -33,7 +33,7 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/load_gauge_fragment_favorite_button"
                     android:src="@drawable/favorite_button"
-                    />
+                    android:background="?android:attr/selectableItemBackgroundBorderless"/>
 
                 <TextView
                     android:textSize="20sp"
