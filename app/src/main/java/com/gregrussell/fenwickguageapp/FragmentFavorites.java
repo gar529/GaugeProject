@@ -1,7 +1,5 @@
 package com.gregrussell.fenwickguageapp;
 
-import android.content.Context;
-import android.content.Intent;
 import android.database.SQLException;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -27,11 +25,11 @@ import java.util.List;
 
 public class FragmentFavorites extends Fragment {
 
-
-    private LoadList task;
-    private Gauge selectedGauge;
+    private ListView listView;
+    LoadList task;
     SwipeRefreshLayout swipeRefresh;
-    ListView listView;
+    Gauge selectedGauge;
+
 
 
 
@@ -68,21 +66,8 @@ public class FragmentFavorites extends Fragment {
                 return false;
             }
         });
-        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
 
-                switch (item.getItemId()){
-                    case R.id.action_settings:
-                        Intent intent = new Intent(getActivity(),SettingsActivity.class);
-                        startActivity(intent);
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-        });
-        toolbar.setNavigationIcon(getResources().getDrawable(R.drawable.baseline_arrow_back_black));
+        toolbar.setNavigationIcon(android.support.v7.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -122,9 +107,8 @@ public class FragmentFavorites extends Fragment {
 
 
                 task.cancel(true);
-                LoadGaugeParams params = new LoadGaugeParams(getActivity().getSupportFragmentManager(),gauge,null);
                 LoadGaugeFragmentAsync loadGaugeFragment = new LoadGaugeFragmentAsync();
-                loadGaugeFragment.execute(params);
+                loadGaugeFragment.execute(gauge);
 
             }
         });
@@ -133,58 +117,45 @@ public class FragmentFavorites extends Fragment {
             @Override
             public void onRefresh() {
 
-                LoadListParams params = new LoadListParams(getContext(),listView,swipeRefresh,null);
                 task = new LoadList();
-                task.execute(params);
+                task.execute();
 
             }
         });
 
-
+        task = new LoadList();
+        task.execute();
 
         return view;
     }
 
-    @Override
-    public void onStart(){
-        super.onStart();
-
-        LoadListParams params = new LoadListParams(getContext(),listView,swipeRefresh,null);
-        task = new LoadList();
-        task.execute(params);
-    }
-
-    private static class LoadListParams{
-        Context context;
-        ListView listView;
-        SwipeRefreshLayout swipeRefresh;
-        List<Gauge> gauges;
-        private LoadListParams(Context context, ListView listView, SwipeRefreshLayout swipeRefresh, List<Gauge> gauges){
-            this.context = context;
-            this.listView = listView;
-            this.swipeRefresh = swipeRefresh;
-            this.gauges = gauges;
-        }
-    }
-
-    private static class LoadList extends AsyncTask <LoadListParams,Void,LoadListParams> {
+    private class LoadList extends AsyncTask <Void,Void,List<Gauge>> {
 
         @Override
-        protected LoadListParams doInBackground(LoadListParams... params){
+        protected List<Gauge> doInBackground(Void... params){
 
-            Context context = params[0].context;
-            ListView listView = params[0].listView;
-            SwipeRefreshLayout swipe = params[0].swipeRefresh;
-            List<Gauge>gauges = GaugeApplication.myDBHelper.getAllFavorites();
-            return new LoadListParams(context,listView,swipe,gauges);
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(getContext());
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+
+
+
+
+            return myDBHelper.getAllFavorites();
         }
         @Override
-        protected void onPostExecute(LoadListParams result){
+        protected void onPostExecute(List<Gauge> result){
 
-            Context context = result.context;
-            ListView listView = result.listView;
-            SwipeRefreshLayout swipeRefresh = result.swipeRefresh;
-            FavoritesListViewAdapter adapter = new FavoritesListViewAdapter(context,result.gauges);
+            FavoritesListViewAdapter adapter = new FavoritesListViewAdapter(getContext(),result);
             listView.setAdapter(null);
             listView.setAdapter(adapter);
             adapter.notifyDataSetChanged();
@@ -196,29 +167,28 @@ public class FragmentFavorites extends Fragment {
 
     }
 
-    private static class LoadGaugeParams{
-
-        FragmentManager fragmentManager;
-        Gauge gauge;
-        GaugeFragParams params;
-        private LoadGaugeParams(FragmentManager fragmentManager, Gauge gauge, GaugeFragParams params){
-            this. fragmentManager = fragmentManager;
-            this.gauge = gauge;
-            this.params = params;
-        }
-    }
-
-    private static class LoadGaugeFragmentAsync extends AsyncTask<LoadGaugeParams,Void,LoadGaugeParams>{
+    private class LoadGaugeFragmentAsync extends AsyncTask<Gauge,Void,GaugeFragParams>{
 
         @Override
-        protected LoadGaugeParams doInBackground(LoadGaugeParams... params){
+        protected GaugeFragParams doInBackground(Gauge... params){
 
-            FragmentManager fragmentManager = params[0].fragmentManager;
 
-            Gauge gauge = params[0].gauge;
-            boolean isFavorite = GaugeApplication.myDBHelper.isFavorite(gauge);
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(getContext());
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+            Gauge gauge = params[0];
+            boolean isFavorite = myDBHelper.isFavorite(gauge);
             Log.d("fragFave",String.valueOf(isFavorite));
-            int notificationState = GaugeApplication.myDBHelper.getFavoriteNotificationState(gauge);
+            int notificationState = myDBHelper.getFavoriteNotificationState(gauge);
             boolean isNotifiable = true;
             if(notificationState == 0){
                 isNotifiable = false;
@@ -227,18 +197,17 @@ public class FragmentFavorites extends Fragment {
 
 
             GaugeFragParams gaugeFragParams = new GaugeFragParams(gauge,isFavorite,isNotifiable);
-            return new LoadGaugeParams(fragmentManager,gauge,gaugeFragParams);
+            return gaugeFragParams;
         }
 
         @Override
-        protected void onPostExecute(LoadGaugeParams result){
+        protected void onPostExecute(GaugeFragParams params){
 
-            GaugeFragParams params =result.params;
             Bundle bundle = new Bundle();
             bundle.putSerializable("gauge",params.getGauge());
             bundle.putBoolean("isFavorite",params.isFavorite());
             bundle.putBoolean("isNotifiable",params.isNotifiable());
-            FragmentManager fragmentManager = result.fragmentManager;
+            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             FragmentGauge fragmentGauge = new FragmentGauge();
             fragmentGauge.setArguments(bundle);
