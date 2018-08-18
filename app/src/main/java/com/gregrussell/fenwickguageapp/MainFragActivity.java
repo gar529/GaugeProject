@@ -1,7 +1,6 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Fragment;
 import android.app.LoaderManager;
@@ -69,24 +68,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.GoogleMapOptions;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
@@ -108,44 +101,42 @@ import java.util.TimeZone;
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
         SearchView.OnQueryTextListener, LoaderManager.LoaderCallbacks<Cursor>{
 
-    private static GoogleMap mMap;
-    private static List<Gauge> myGaugeList;
-    private static List<Gauge> allGauges;
-    private LinearLayout gaugeDataLayout;
-    private static float mapZoomLevel;
-    private static FragmentManager mFragmentManager;
+    private GoogleMap mMap;
+    List<Gauge> myList;
+    List<Gauge> allGauges;
+    LinearLayout gaugeDataLayout;
+    private int distanceAway;
+    //private Location location;
     private Context mContext;
-    private static List<Marker> markerList;
-    private static float zoomLevel[] = {11,10,8,7,0};
-    private static float previousZoom = 0;
-    private static Location previousLocation; //used as point to measure distance away of gauges
+    private List<Marker> markerList;
+    private float zoomLevel[] = {11,10,8,7,0};
+    private float currentZoomLevel = 0;
+    private Location previousLocation;
     final double MILE_CONVERTER = .000621371;
-    private static LatLng myLatLng;
+    private LatLng myLatLng;
+    private LatLng searchLatLng;
+    private DataBaseHelperGauges myDBHelper;
+    private int bitmapCounter;
     private RelativeLayout invisibleLayout;
     private SimpleCursorAdapter mAdapter;
     private SearchView searchView;
-    private static Marker selectedMarker;
+    private Marker selectedMarker;
     private ListView searchSuggestions;
     private String mCurFilter;
-    private FusedLocationProviderClient mFusedLocationClient;
-    private static LocationRequest mLocationRequest;
-    private static LocationCallback mLocationCallback;
-    private static Location updatedLocation;
+    private ImageView favoriteButton;
+    //private LoadGauge loadGaugeTask;
 
     public static final String WIFI = "Wi-fi";
     public static final String ANY = "Any";
     private static final String MY_URL = "https://raw.githubusercontent.com/gar529/GaugeProject/master/GaugeProject/xmlData.xml";
-    private static Location homeLocation; //User's location
+    private static final int MY_PERMISSIONS_REQUEST_LOCATION = 0;
+    private static Location homeLocation;
     public static String sPref = null;
-    private static boolean wifiConnected = true; // Whether there is a Wi-Fi connection.
-    private static boolean mobileConnected = false; // Whether there is a mobile connection.
-
-
-    private static final int CLOSEST_ZOOM = 12;
-    private static final int CLOSE_ZOOM = 11;
-    private static final int MIDDLE_ZOOM = 10;
-    private static final int FAR_ZOOM = 8;
-    private static final int FARTHEST_ZOOM = 5;
+    // Whether there is a Wi-Fi connection.
+    private static boolean wifiConnected = true;
+    // Whether there is a mobile connection.
+    private static boolean mobileConnected = false;
+    public static final String CHANNEL_ID = "Flood Warning";
 
 
 
@@ -159,7 +150,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Log.d("backpressed7,",String.valueOf(selectedMarker));
                 gaugeDataLayout.setVisibility(View.GONE);
                 if (selectedMarker != null) {
-                    resetSelectedMarker(mContext);
+                    resetSelectedMarker();
                     selectedMarker = null;
                 }
             } else if (searchSuggestions.getCount() > 0) {
@@ -167,7 +158,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 searchView.setQuery("", false);
                 searchView.clearFocus();
                 if (selectedMarker != null) {
-                    resetSelectedMarker(mContext);
+                    resetSelectedMarker();
                     selectedMarker = null;
                 }
             }else if(selectedMarker !=null) {
@@ -185,7 +176,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
                 }else{
                     Log.d("backpressed3",String.valueOf(selectedMarker));
-                    resetSelectedMarker(mContext);
+                    resetSelectedMarker();
                     selectedMarker = null;
                     super.onBackPressed();
 
@@ -213,6 +204,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 super.onBackPressed();
             }
         }
+
+
     }
 
 
@@ -224,7 +217,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("onResumeMain","onResume");
         if(selectedMarker != null){
             Gauge gauge = (Gauge)selectedMarker.getTag();
-
+            //loadGaugeTask = new LoadGauge();
+            //loadGaugeTask.execute(gauge);
             if(gaugeDataLayout.getVisibility() != View.VISIBLE){
                 gaugeDataLayout.setVisibility(View.VISIBLE);
             }
@@ -247,6 +241,51 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Do the
+                    // contacts-related task you need to do.
+                    getMyLocation();
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+
+
+
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setMessage(R.string.permission_dialog_message)
+                            .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+
+                                    getMyLocation();
+                                }
+                            });
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                }
+
+
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request.
+        }
+    }
+
+
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -254,35 +293,11 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("Timer","Finish");
 
         mContext = this;
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(MainFragActivity.this);
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(5000);
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                Log.d("getLocationUpdate5","in onLocationResult");
-                if (locationResult == null) {
-                    Log.d("getLocationUpdate3","location result is null");
-                    return;
-                }else{
-                    Log.d("getLocationUpdate4","location result is not null");
-                }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-                    Log.d("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                    if(location!=null) {
-                        Log.d("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                        homeLocation = location;
-                        stopLocationUpdates(mFusedLocationClient);
-                    }
-                }
-            };
-        };
-        startLocationUpdates(mContext,mFusedLocationClient);
+
+
         LinearLayout mainLayout = (LinearLayout)findViewById(R.id.main_layout);
         mainLayout.requestFocus();
+
         String s = getIntent().getStringExtra("notification");
         Log.d("intent41",String.valueOf(s));
         if(getIntent().getStringExtra("notification") !=null){
@@ -290,16 +305,66 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             Log.d("intent40","from notification");
 
         }
+
+
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         sPref = sharedPrefs.getString("listPref", ANY);
         Log.d("shared",sPref);
         updateConnectedFlags();
 
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        String syncConnPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
-        Log.d("settings",String.valueOf(syncConnPref));
+        ComponentName receiver = new ComponentName(this, StartAlarmAtBoot.class);
+        PackageManager pm = this.getPackageManager();
+
+        pm.setComponentEnabledSetting(receiver,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP);
+
+        createNotificationChannel();
+
+        AlarmManager alarmMgr = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this,AlarmReceiver.class);
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(this,0,intent,0);
+        intent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
+
+        if(Build.VERSION.SDK_INT >= 23) {
+            alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + Constants.FIFTEEN_MINUTES_MILLIS, alarmIntent);
+        }else{
+            Random random = new Random();
+            int randomTimeMillis = random.nextInt(Constants.UPPER_BOUND_MILLIS - Constants.LOWER_BOUND_MILLIS) + Constants.LOWER_BOUND_MILLIS;
+            alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
+        }
+
+        getLocationPermission();
+
+
+
+
+
+        //myList = (ArrayList<Gauge>)getIntent().getSerializableExtra("LIST_OF_RESULTS");
+        //distanceAway = getIntent().getIntExtra("DISTANCE",5);
+        //location = getIntent().getParcelableExtra("MY_LOCATION");
 
         invisibleLayout = (RelativeLayout) findViewById(R.id.invisible_layout);
+
+
+        myDBHelper = new DataBaseHelperGauges(mContext);
+        try{
+        myDBHelper.createDataBase();
+
+        }catch (IOException e){
+        throw new Error("unable to create db");
+        }
+        try{
+        myDBHelper.openDataBase();
+        }catch (SQLException sqle){
+        throw sqle;
+        }
+
+
+
+
         invisibleLayout.setVisibility(View.GONE);
         gaugeDataLayout = (LinearLayout) findViewById(R.id.gauge_data_layout);
 
@@ -311,6 +376,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false); // Do not iconify the widget; expand it by default
         searchView.setOnQueryTextListener(this);
+
+
         View searchField = findViewById(getResources().getIdentifier("android:id/search_src_text", null, null));
         searchField.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -319,29 +386,33 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 if(gaugeDataLayout.getVisibility() != View.GONE) {
                     gaugeDataLayout.setVisibility(View.GONE);
                     if(selectedMarker != null){
-                        resetSelectedMarker(mContext);
+                        resetSelectedMarker();
                         selectedMarker = null;
                     }
                 }
             }
         });
+
         searchField.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean b) {
                 Log.d("searchField","focus changed");
+
                 if(b){
                     if(gaugeDataLayout.getVisibility() != View.GONE) {
                         gaugeDataLayout.setVisibility(View.GONE);
                         if(selectedMarker != null){
-                            resetSelectedMarker(mContext);
+                            resetSelectedMarker();
                             selectedMarker = null;
                         }
                     }
                 }
+
             }
         });
-        FloatingActionButton floatingActionButtonFavorites = (FloatingActionButton)findViewById(R.id.floating_button_map_favorites);
-        floatingActionButtonFavorites.setOnClickListener(new View.OnClickListener() {
+
+        FloatingActionButton floatingActionButton = (FloatingActionButton)findViewById(R.id.floating_button_map);
+        floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Bundle bundle = new Bundle();
@@ -357,37 +428,73 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 fragmentTransaction.commit();
             }
         });
-        FloatingActionButton floatingActionButtonLocation = (FloatingActionButton)findViewById(R.id.floating_button_map_location);
-        floatingActionButtonLocation.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
 
-                updateLocation(mContext,mFusedLocationClient);
-
-                clearViews(mContext,searchView,gaugeDataLayout);
-            }
-        });
         gaugeDataLayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if(selectedMarker != null){
+
+
+
                     Gauge gauge = (Gauge)selectedMarker.getTag();
-                    LoadFragmentGaugeParams params = new LoadFragmentGaugeParams(gauge,new GaugeFragParams(null,false,false),getSupportFragmentManager());
-                    LoadFragmentGaugeAsync loadFragmentGaugeAsync = new LoadFragmentGaugeAsync();
-                    loadFragmentGaugeAsync.execute(params);
+                    LoadGaugeFragmentAsync loadGaugeFragment = new LoadGaugeFragmentAsync();
+                    loadGaugeFragment.execute(gauge);
                 }
             }
         });
+
+
+
         View closeButton = findViewById(getResources().getIdentifier("android:id/search_close_btn", null, null));
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Log.d("searchClose","clicked");
-                clearViews(mContext,searchView,gaugeDataLayout);
+                searchView.setQuery("",false);
+                searchView.clearFocus();
+                if(gaugeDataLayout.getVisibility() != View.GONE) {
+                    gaugeDataLayout.setVisibility(View.GONE);
+                    if(selectedMarker != null){
+                        resetSelectedMarker();
+                        selectedMarker = null;
+                    }
+                }
 
             }
         });
+
+        /*FavoriteButton = (ImageView)findViewById(R.id.favorite_button);
+        favoriteButton.setClickable(true);
+        favoriteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(favoriteButton.isSelected()){
+                    favoriteButton.setSelected(false);
+                    Gauge gauge = (Gauge)selectedMarker.getTag();
+                    RemoveFavorite task = new RemoveFavorite();
+                    task.execute(gauge);
+                }else{
+                    favoriteButton.setSelected(true);
+                    if(selectedMarker != null){
+                        Gauge gauge = (Gauge)selectedMarker.getTag();
+                        AddFavorite task = new AddFavorite();
+                        task.execute(gauge);
+                    }
+                }
+            }
+        });*/
+
+
+
+
+
         searchSuggestions = (ListView)findViewById(R.id.search_suggestions);
+
+        mAdapter = new SimpleCursorAdapter(this,android.R.layout.simple_list_item_2, null,
+                new String[] {SearchManager.SUGGEST_COLUMN_TEXT_1,SearchManager.SUGGEST_COLUMN_TEXT_2}, new int[] {android.R.id.text1, android.R.id.text2},0);
+        searchSuggestions.setAdapter(mAdapter);
+        getLoaderManager().initLoader(0,null,this);
+
         searchSuggestions.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -403,18 +510,19 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Intent intent = new Intent(mContext,MainFragActivity.class);
                 intent.putExtra("DATA",str);
                 startActivity(intent);
+
+
+                //Log.d("intent4",getIntent().getDataString());
+                //handleIntent(getIntent());
             }
         });
-        mAdapter = new SimpleCursorAdapter(this,android.R.layout.simple_list_item_2, null,
-                new String[] {SearchManager.SUGGEST_COLUMN_TEXT_1,SearchManager.SUGGEST_COLUMN_TEXT_2}, new int[] {android.R.id.text1, android.R.id.text2},0);
-        searchSuggestions.setAdapter(mAdapter);
-        getLoaderManager().initLoader(0,null,this);
+
         Log.d("searchView3", "adapter empty? " + mAdapter.isEmpty());
-        GaugeApplication.myDBHelper.clearMarkers();
-        mFragmentManager = getSupportFragmentManager();
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        getMyLocation(mContext,mFusedLocationClient);
+
+        myDBHelper.clearMarkers();
+
+
+
 
 
     }
@@ -426,59 +534,79 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("intent5","on click");
         Log.d("intent6", String.valueOf(getIntent().getAction()));
 
+
+
         handleIntent(intent);
     }
 
+    private void getLocationPermission() {
 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.d("locations8", "permission not granted");
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                getMyLocation();
+            } else {
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+            }
+        }else {
+            getMyLocation();
+        }
+    }
 
-    private static void getMyLocation(Context context,FusedLocationProviderClient providerClient){
+    private void getMyLocation(){
+        final FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        //mFusedLocationClient.setMockLocation(loc);
 
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
-        boolean b = false;
-        UpdateDBParams updateDBParams = new UpdateDBParams(context, b);
-        if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            UpdateDataBaseTask task = new UpdateDataBaseTask();
-            task.execute(updateDBParams);
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
+
         }else {
             Log.d("locations9", "permission granted");
 
-            getLastKnownLocation(context,providerClient);
-            UpdateDataBaseTask task = new UpdateDataBaseTask();
-            task.execute(updateDBParams);
+            mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+                    Log.d("location5", "logging");
+                    if (location != null) {
+                        //do location stuff
+
+                        Calendar calendar = Calendar.getInstance();
+                        Date date = new Date();
+                        date.setTime(location.getTime());
+
+
+                        Log.d("location1", String.valueOf(date));
+                        long myTime = calendar.getTimeInMillis();
+                        long currentTime = 0;
+
+                        Log.d("location10", String.valueOf(date));
+                        homeLocation = location;
+
+                        //loadPage();
+                        //runGeo(location);
+
+
+                    } else {
+                        Log.d("location2", String.valueOf(location));
+                    }
+                }
+            });
+            OpenDataBaseTask task = new OpenDataBaseTask();
+            task.execute();
         }
+
+
+
     }
 
-    /**
-     * Checks if location updates are permitted, then requests location updates in the interval
-     * defined by mLocationRequest
-     * @param context Activity context
-     * @param mFusedLocationClient FusedLocationProviderClient used to initiate location requests
-     */
-    private static void startLocationUpdates(Context context, FusedLocationProviderClient mFusedLocationClient) {
-
-        Log.d("getLocationUpdate","startLocation");
-        if(ContextCompat.checkSelfPermission((Activity)context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                    mLocationCallback,
-                    null /* Looper */);
-            Log.d("getLocationUpdate2","getting location");
-        }
-    }
-
-    /**
-     * Stops the receiving of location updates
-     * @param mFusedLocationClient FusedLocationProviderClient initiates stoppage of location updates
-     */
-    private static void stopLocationUpdates(FusedLocationProviderClient mFusedLocationClient) {
-        Log.d("getLocationUpdate6","location updates stopped");
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-    }
-
-    /**
-     * Method used to check status of the internet connection
-     * Sets booleans for wifiConnected and mobileConnected
-     * If set to false, connection not available
-     */
     public void updateConnectedFlags() {
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -493,17 +621,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    /**
-     * Method for handling incoming Intents
-     * Intent with a stringExtra "notification" comes from the user clicking the alert notification -
-     * The notification intent is handled by displaying FragmentFavorites.
-     * Intent with ACTION_SEARCH is an intent that comes from a search query -
-     * They query is obtained from the stringExtra, searchView is cleared, and search() is called.
-     * Finally, if any other intents are received, the handler checks if the stringExtra "DATA" is
-     * attached. Intents with stringExtra "DATA" are sent from clicking a searchSuggestion -
-     * The intent is handled by starting a MoveToLocation async Task
-     * @param intent the intent that is received by the handler
-     */
     private void handleIntent(Intent intent){
 
         if(intent.getStringExtra("notification") != null){
@@ -511,15 +628,20 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             FragmentManager fragmentManager = getSupportFragmentManager();
 
-            //if a FavoriteFragment is already in place, remove it and add a new one
             if(fragmentManager.findFragmentByTag("favorite_fragment") != null ){
                 fragmentManager.beginTransaction().remove(fragmentManager.findFragmentByTag("favorite_fragment")).commit();
                 fragmentManager.popBackStack();
 
-                addFragmentFavorites();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
+                fragmentTransaction.commit();
 
             }else {
-                addFragmentFavorites();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                FragmentFavorites fragmentFavorites = new FragmentFavorites();
+                fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
+                fragmentTransaction.commit();
             }
 
         }else {
@@ -529,65 +651,77 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 search(query);
                 searchView.clearFocus();
                 searchSuggestions.setAdapter(null);
+
+            } else if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+                Uri data = intent.getData();
+                Log.d("intent1", data.getLastPathSegment());
             } else {
                 String dataString = intent.getStringExtra("DATA");
                 if (dataString != null) {
                     Log.d("intent20", dataString);
 
-                    MoveLocationParams params = new MoveLocationParams(this,dataString,null,gaugeDataLayout,getSupportFragmentManager());
                     MoveToLocation task = new MoveToLocation();
-                    task.execute(params);
+                    task.execute(dataString);
 
+                } else {
+                    Log.d("intent21", String.valueOf(dataString));
                 }
             }
         }
     }
 
-    /**
-     * Adds new FavoriteFragment to main_layout
-     */
-    private void addFragmentFavorites(){
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        FragmentFavorites fragmentFavorites = new FragmentFavorites();
-        fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
-        fragmentTransaction.commit();
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.enableLights(true);
+            channel.enableVibration(true);
+            channel.setDescription(description);
+            channel.setVibrationPattern(new long[]{1000, 1000, 1000});
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
 
-    /**
-     * Receives a user inputted String, passes it through a Geocoder, and moves the camera to that
-     * address if it is valid and located in the US
-     * @param query user input string that will be searched
-     */
+
+
     private void search(String query){
 
         Geocoder geo = new Geocoder(this, Locale.getDefault());
         List<Address> addressList = new ArrayList<Address>();
         Address address;
+        Boolean validAddress = false;
         try {
             addressList = geo.getFromLocationName(query, 10);
         }catch (IOException e){
             e.printStackTrace();
         }
 
-        if(!addressList.isEmpty()){
-            //the geocoder can return multiple addresses from a single Location Name
-            //Uses the first address returned that is in the US
-            int i = 0;
-            address = addressList.get(i);
-            while( i < addressList.size() && !address.getCountryCode().equals("US")){
+        if(addressList.size() > 0){
 
+
+            int i = 0;
+            do{
+
+                address = addressList.get(i);
                 Log.d("searchAddress4",address.getLocality() + ", " + address.getAdminArea() + ", " + address.getCountryCode() + "   " + addressList.size());
                 i++;
             }
-
+            while( i < addressList.size() && !address.getCountryCode().equals("US"));
 
             Log.d("searchAddress5",String.valueOf(address.getCountryCode().equals("US")));
 
             if(address.getCountryCode().equals("US")){
+                validAddress = true;
                 LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng,CLOSEST_ZOOM));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,12));
             }else{
                 CharSequence text = "No results for " + query;
                 Toast toast = Toast.makeText(mContext,text,Toast.LENGTH_SHORT);
@@ -595,6 +729,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
 
             }
+
+
     }
 
 
@@ -614,6 +750,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             baseUri = SearchContentProvider.BASE_URI;
         }
+
+
+
+
         // Now create and return a CursorLoader that will take care of
         // creating a Cursor for the data being displayed.
         String select = SearchManager.SUGGEST_COLUMN_TEXT_1 + " LIKE ? OR " +
@@ -659,16 +799,17 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         return true;
     }
 
-    /**
-     * Method called when keyboard searchButton is pressed. Calls search()
-     * @param query String inputted by user
-     * @return
-     */
     @Override public boolean onQueryTextSubmit(String query) {
-
+        // Don't care about this.
         search(query);
         return true;
     }
+
+    public void onListItemClick(ListView l, View v, int position, long id) {
+        // Insert desired behavior here.
+        Log.i("FragmentComplexList", "Item clicked: " + id);
+    }
+
 
     /**
      * Manipulates the map once available.
@@ -677,35 +818,58 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      * we just add a marker near Sydney, Australia.
      * If Google Play services is not installed on the device, the user will be prompted to install
      * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app. - Google
+     * installed Google Play services and returned to the app.
      */
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
+
+
         mMap = googleMap;
         mMap.setMinZoomPreference(7.0f);
+
         mMap.getUiSettings().setMapToolbarEnabled(false);
         mMap.getUiSettings().setCompassEnabled(true);
+
         Log.d("compass", String.valueOf(mMap.getUiSettings().isCompassEnabled()));
         setCompassPosition();
+
+
+        // Add a marker in Sydney and move the camera
         myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
+        //LatLng farthestLocation = new LatLng(38.830833,-77.134722);
 
+        LatLng sydney = new LatLng(-34, 151);
         mMap.setOnMarkerClickListener(this);
-
-        //when the map is clicked, clear the views
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 Log.d("mapClick","click");
-               clearViews(mContext,searchView,gaugeDataLayout);
+
+                searchView.setQuery("",false);
+                searchView.clearFocus();
+                gaugeDataLayout.setVisibility(View.GONE);
+                if(selectedMarker != null){
+                    resetSelectedMarker();
+                    selectedMarker = null;
+                }
             }
         });
-
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                 position(myLatLng).icon(BitmapDescriptorFactory.
-                fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
+                defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
         myLocationMarker.setTag(null);
-        loadInitialMarkers();
+        markerList = new ArrayList<Marker>();
+
+        //addMarkers(myList,mMap.getCameraPosition().zoom);
+
+        for(int i=0;i<myList.size();i++){
+            LatLng gauge = new LatLng(myList.get(i).getGaugeLatitude(), myList.get(i).getGaugeLongitude());
+            //Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(myList.get(i).getGaugeName()));
+            Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(myList.get(i).getGaugeName()),mMap.getCameraPosition().zoom));
+            marker.setTag(myList.get(i));
+            markerList.add(marker);
+        }
         mMap.setOnCameraMoveStartedListener(new GoogleMap.OnCameraMoveStartedListener() {
             @Override
             public void onCameraMoveStarted(int i) {
@@ -717,221 +881,250 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             @Override
             public void onCameraIdle() {
                 Log.d("mapPosition2", "camera position: " + String.valueOf(mMap.getCameraPosition()));
-                Log.d("mapPosition8", "myList size: " + myGaugeList.size());
-                markerLoader();
+                Log.d("mapPostion8","myList size: " + myList.size());
+
+                Float zoom = mMap.getCameraPosition().zoom;
+                Location myLocation = new Location("");
+                myLocation.setLatitude(mMap.getCameraPosition().target.latitude);
+                myLocation.setLongitude(mMap.getCameraPosition().target.longitude);
+
+                if(previousLocation.distanceTo(myLocation) > 5 * MILE_CONVERTER){
+                    GetLocations gl = new GetLocations(myLocation, allGauges);
+                    List<Gauge> gaugeList = gl.getClosestGauges(250);
+                    List[] gaugeListArray = gl.getClosestGaugesArray();
+
+                    Float mZoom;
+                    if(zoom > zoomLevel[0]){
+                        mZoom = zoomLevel[0];
+                    }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
+                        mZoom = zoomLevel[1];
+                    }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+                        mZoom = zoomLevel[2];
+                    }else if(zoom >= zoomLevel[3] && zoom <= zoomLevel[2]){
+                        mZoom = zoomLevel[3];
+                    }
+                    else{
+                        mZoom = zoomLevel[4];
+                    }
+                    if(mZoom == currentZoomLevel && mZoom == zoomLevel[0]){
+                        Log.d("addMapMarkers2","zoomLevel 0");
+                        List<Gauge> mList = gaugeListArray[0];
+
+                       /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        AddMarkerAsync task = new AddMarkerAsync();
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
+                    }
+                    else if(mZoom == currentZoomLevel && mZoom == zoomLevel[1]){
+                        Log.d("addMapMarkers3","zoomLevel 1");
+                        List<Gauge> mList = gaugeListArray[1];
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        AddMarkerAsync task = new AddMarkerAsync();
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
+                    }
+                    else if(mZoom == currentZoomLevel && mZoom == zoomLevel[2]){
+                        Log.d("addMapMarkers4","zoomLevel 2");
+                        List<Gauge> mList = gaugeListArray[2];
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        AddMarkerAsync task = new AddMarkerAsync();
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
+                    }
+                    else if(mZoom == currentZoomLevel && mZoom == zoomLevel[3]){
+                        Log.d("addMapMarkers5","zoomLevel 3");
+                        List<Gauge> mList = gaugeListArray[3];
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        AddMarkerAsync task = new AddMarkerAsync();
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
+                    }
+                    else if(mZoom == currentZoomLevel && mZoom == zoomLevel[4]){
+                        Log.d("addMapMarkers6","zoomLevel 4");
+                        //addMarkers(gaugeList,zoom);
+                        List<Gauge> mList = gaugeListArray[4];
+                        /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                        AddMarkerAsync task = new AddMarkerAsync();
+                        task.execute(params);*/
+                        addMarkersUIThread(mList,zoom);
+                    }else{
+                        Log.d("addMapMarkers1","clearing map");
+                        Log.d("addMapMarkers7", "mZoom is: " + mZoom + ", currentZoom is: " + currentZoomLevel);
+
+                        if(selectedMarker !=null) {
+                            Log.d("markerStuff5", ((Gauge) selectedMarker.getTag()).getGaugeID());
+                            Gauge gauge = (Gauge) selectedMarker.getTag();
+                            mMap.clear();
+                            markerList.clear();
+                            selectedMarker.setTag(gauge);
+
+                        }else {
+                            mMap.clear();
+                            markerList.clear();
+                        }
+
+                        Log.d("markerStuff4",String.valueOf(selectedMarker));
+                        if(selectedMarker != null) {
+                            markerList.add(selectedMarker); //selectedMarker code
+                            Log.d("markerStuff5",((Gauge)selectedMarker.getTag()).getGaugeID());
+                        }
+
+                        myDBHelper.clearMarkers();
+                        Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
+                                position(myLatLng).icon(BitmapDescriptorFactory.
+                                defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                        myLocationMarker.setTag(null);
+                        /*for(int i=0;i< gaugeList.size();i++) {
+                            LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+                            //Marker marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+
+                            Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                            marker.setTag(gaugeList.get(i));
+                            markerList.add(marker);
+                        }*/
+                        if(mZoom == zoomLevel[0]){
+
+                            List<Gauge> mList = gaugeListArray[0];
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            AddMarkerAsync task = new AddMarkerAsync();
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
+                        }
+                        else if(mZoom == zoomLevel[1]){
+                            List<Gauge> mList = gaugeListArray[1];
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            AddMarkerAsync task = new AddMarkerAsync();
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
+                        }
+                        else if(mZoom == zoomLevel[2]){
+                            List<Gauge> mList = gaugeListArray[2];
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            AddMarkerAsync task = new AddMarkerAsync();
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
+                        }
+                        else if(mZoom == zoomLevel[3]){
+                            List<Gauge> mList = gaugeListArray[3];
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            AddMarkerAsync task = new AddMarkerAsync();
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
+                        }
+                        else if(mZoom == zoomLevel[4]){
+                            //addMarkers(gaugeList,zoom);
+                            List<Gauge> mList = gaugeListArray[4];
+                            /*AddMarkerParams params = new AddMarkerParams(mList,zoom);
+                            AddMarkerAsync task = new AddMarkerAsync();
+                            task.execute(params);*/
+                            addMarkersUIThread(mList,zoom);
+                        }
+
+
+
+
+                    }
+                }
+
+                if(zoom > zoomLevel[0]){
+
+                    if(zoomLevel[0]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[0];
+
+                        for (int i = 0; i < markerList.size(); i++) {
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                //markerList.get(i).setIcon(BitmapDescriptorFactory.defaultMarker());
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                            }
+                        }
+
+                    }
+
+                }else if(zoom > zoomLevel [1] && zoom <= zoomLevel[0]){
+                    if(zoomLevel[1]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[1];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+                            }
+
+                        }
+                    }
+                }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+                    if(zoomLevel[2]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[2];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
+                            }
+
+                        }
+                    }
+                }else if(zoom >= zoomLevel[3] && zoom <= zoomLevel[2]){
+                    if(zoomLevel[3]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[3];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            }
+
+                        }
+                    }
+                }else{
+                    if(zoomLevel[4]!= currentZoomLevel) {
+                        currentZoomLevel = zoomLevel[4];
+                        for (int i = 0; i < markerList.size(); i++) {
+                            if(selectedMarker != null && markerList.get(i) != selectedMarker) {
+                                markerList.get(i).setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
+                            }
+
+                        }
+                    }
+                }
+
+
 
             }
         });
 
 
+
+
+
+
+
+
+
+
+        //mMap.addMarker(new MarkerOptions().position(farthestLocation));
+        //mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation));
+        //zoom levels 5 miles - 12, 10miles - 11, 20miles - 10, 50miles - 8, 100miles - 7, 250miles - 6, 500miles < - 5
+
+        int mapZoomLevel = 0;
+        switch (distanceAway){
+            case 5:
+                mapZoomLevel = 12;
+                break;
+            case 10:
+                mapZoomLevel = 11;
+                break;
+            case 20:
+                mapZoomLevel = 10;
+                break;
+            case 50:
+                mapZoomLevel = 8;
+                break;
+            default:
+                mapZoomLevel = 5;
+                break;
+
+
+
+        }
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng,mapZoomLevel));
         searchView.clearFocus();
     }
 
-    private void loadInitialMarkers(){
-        markerList = new ArrayList<Marker>();
-        for(Gauge gauge : myGaugeList){
-            LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
-            Marker marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()),mMap.getCameraPosition().zoom));
-            marker.setTag(gauge);
-            markerList.add(marker);
-        }
-    }
-
-    /**
-     * Loads markers based on camera position and zoom level
-     */
-    private void markerLoader(){
-        Float zoom = mMap.getCameraPosition().zoom;
-
-        //myLocation is where the camera has moved to
-        Location myLocation = new Location("");
-        myLocation.setLatitude(mMap.getCameraPosition().target.latitude);
-        myLocation.setLongitude(mMap.getCameraPosition().target.longitude);
-
-        Log.d("markerStuff9","what's the distance" + previousLocation.distanceTo(myLocation) * MILE_CONVERTER);
-
-        //get the zoom of the camera and assign a zoom level based on it
-        Float mZoom;
-        if(zoom > zoomLevel[0]){
-            mZoom = zoomLevel[0];
-        }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
-            mZoom = zoomLevel[1];
-        }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
-            mZoom = zoomLevel[2];
-        }else if(zoom >= zoomLevel[3] && zoom <= zoomLevel[2]){
-            mZoom = zoomLevel[3];
-        }
-        else{
-            mZoom = zoomLevel[4];
-        }
-
-        //if the camera has moved 5 miles, display a group of markers based on the zoom level
-
-
-        //Get the groupings of markers and put them in an array
-        GetLocations gl = new GetLocations(myLocation, allGauges);
-        List[] gaugeListArray = gl.getClosestGaugesArray();
-        previousLocation = myLocation;
-
-
-
-        //check if the zoom level has changed when the camera position moved
-        //if the zoom level didn't change, just add more markers
-        if(mZoom == zoomLevel[0] && previousZoom == mZoom){
-            Log.d("addMapMarkers2","zoomLevel 0");
-            List<Gauge> mList = gaugeListArray[0];
-            previousZoom = mZoom;
-            addMarkers(mList,mZoom);
-        }
-        else if(mZoom == zoomLevel[1] && previousZoom == mZoom){
-            Log.d("addMapMarkers3","zoomLevel 1");
-            List<Gauge> mList = gaugeListArray[1];
-            previousZoom = mZoom;
-            addMarkers(mList,mZoom);
-        }
-        else if(mZoom == zoomLevel[2] && previousZoom == mZoom){
-            Log.d("addMapMarkers4","zoomLevel 2");
-            List<Gauge> mList = gaugeListArray[2];
-            previousZoom = mZoom;
-            addMarkers(mList,mZoom);
-        }
-        else if(mZoom == zoomLevel[3] && previousZoom == mZoom){
-            Log.d("addMapMarkers5","zoomLevel 3");
-            List<Gauge> mList = gaugeListArray[3];
-            previousZoom = mZoom;
-            addMarkers(mList,mZoom);
-        }
-        else if(mZoom == zoomLevel[4] && previousZoom == mZoom){
-            Log.d("addMapMarkers6","zoomLevel 4");
-            List<Gauge> mList = gaugeListArray[4];
-            previousZoom = mZoom;
-            addMarkers(mList,mZoom);
-        }else{
-            //zoom level has changed
-            //if zoom in clear map and markers
-            //if zoom out, resize markers on screen then add new markers
-            Log.d("addMapMarkers22","previousZoom: " + previousZoom + " mZoom: " + mZoom);
-            if(previousZoom < mZoom){
-                //zooming in
-
-                Log.d("addMapMarkers20","zooming in");
-                //selectedMarker's tag is cleared with map, set it to a gauge object then re-add
-                if(selectedMarker !=null) {
-                    Log.d("markerStuff5", ((Gauge) selectedMarker.getTag()).getGaugeID());
-                    Gauge gauge = (Gauge) selectedMarker.getTag();
-                    mMap.clear();
-                    markerList.clear();
-                    selectedMarker.setTag(gauge);
-                    markerList.add(selectedMarker);
-                }else {
-                    mMap.clear();
-                    markerList.clear();
-                }
-                Log.d("markersAdded45","clearMarkers");
-                GaugeApplication.myDBHelper.clearMarkers();
-
-                //add markers
-                Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                        position(myLatLng).icon(BitmapDescriptorFactory.
-                        fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
-                myLocationMarker.setTag(null);
-                if(mZoom == zoomLevel[0]){
-                    List<Gauge> mList = gaugeListArray[0];
-                    addMarkers(mList,mZoom);
-                    previousZoom = mZoom;
-                }
-                else if(mZoom == zoomLevel[1]){
-                    List<Gauge> mList = gaugeListArray[1];
-                    addMarkers(mList,mZoom);
-                    previousZoom = mZoom;
-                }
-                else if(mZoom == zoomLevel[2]){
-                    List<Gauge> mList = gaugeListArray[2];
-                    addMarkers(mList,mZoom);
-                    previousZoom = mZoom;
-                }
-                else if(mZoom == zoomLevel[3]){
-                    List<Gauge> mList = gaugeListArray[3];
-                    addMarkers(mList,mZoom);
-                    previousZoom = mZoom;
-                }
-                else if(mZoom == zoomLevel[4]){
-                    List<Gauge> mList = gaugeListArray[4];
-                    addMarkers(mList,mZoom);
-                    previousZoom = mZoom;
-                }
-
-            }else{
-                //zooming out
-                Log.d("addMapMarkers21","zooming out");
-                Log.d("addMapMarkers24","mZoom is: " + mZoom + " previousZoom: " + previousZoom);
-                Log.d("addMapMarkers25", "markerList size: " + markerList.size());
-
-                //resize old markers first, then add new ones
-                if(mZoom == zoomLevel[0]){
-                    if(zoomLevel[0]!= previousZoom) {
-                        previousZoom = zoomLevel[0];
-                        for (Marker marker : markerList) {
-                            if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,60, 60)));
-                            }
-                        }
-                        List<Gauge> mList = gaugeListArray[0];
-                        addMarkers(mList,mZoom);
-                    }
-                }else if(mZoom == zoomLevel[1]){
-                    if(zoomLevel[1]!= previousZoom) {
-                        previousZoom = zoomLevel[1];
-                        for (Marker marker : markerList) {
-                            if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,60, 60)));
-                            }
-                        }
-                        List<Gauge> mList = gaugeListArray[1];
-                        addMarkers(mList,mZoom);
-                    }
-                }else if(mZoom == zoomLevel[2]){
-                    if(zoomLevel[2]!= previousZoom) {
-                        previousZoom = zoomLevel[2];
-                        for (Marker marker : markerList) {
-                            if ( marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,40, 40)));
-                            }
-                        }
-                        List<Gauge> mList = gaugeListArray[2];
-                        addMarkers(mList,mZoom);
-                    }
-                }else if(mZoom == zoomLevel[3]){
-                    if(zoomLevel[3]!= previousZoom) {
-                        previousZoom = zoomLevel[3];
-                        for (Marker marker : markerList) {
-                            if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,20, 20)));
-                            }
-                        }
-                        List<Gauge> mList = gaugeListArray[3];
-                        addMarkers(mList,mZoom);
-                    }
-                }else{
-                    if(zoomLevel[4]!= previousZoom) {
-                        previousZoom = zoomLevel[4];
-                        for (Marker marker : markerList) {
-                            if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,20, 20)));
-                            }
-                        }
-                        List<Gauge> mList = gaugeListArray[4];
-                        addMarkers(mList,mZoom);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * This method sets the position of the map compass
-     */
     private void setCompassPosition(){
 
         Display display = getWindowManager().getDefaultDisplay();
@@ -946,100 +1139,157 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
-
     private void addMarkers(List<Gauge> gaugeList, Float zoom){
+
+
         Log.d("markersAdded1", "STart");
         //invisibleLayout.setVisibility(View.VISIBLE);
         Log.d("markersAdded3", String.valueOf(invisibleLayout.getVisibility()));
         List<Marker> nMarkerList = new ArrayList<Marker>();
         Log.d("markersAdded5","loop started");
-        int i = 0;
-        for(Gauge gauge : gaugeList){
-            LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
-            Log.d("markersAdded6","Gauge being checked: " + gauge.getGaugeName() + " " + gauge.getGaugeID());
-            if(!checkMarkers(gauge.getGaugeID())){
+        for(int i=0; i<gaugeList.size();i++){
+            LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+            if(!checkMarkers(gaugeList.get(i).getGaugeID())){
                 //start selectedMarker added code
                 if(selectedMarker != null){
+
                     Marker marker;
-                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())){
-                        marker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
-                        i++;
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+                        marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
                     }else {
-                        marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
-                        i++;
+                        marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
                     }
-                    marker.setTag(gauge);
+                    marker.setTag(gaugeList.get(i));
                     markerList.add(marker);
                     nMarkerList.add(marker);
                     Log.d("markerStuff",String.valueOf(selectedMarker) +"   " + ((Gauge)selectedMarker.getTag()).getGaugeID());
-                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())){
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+
                         markerList.remove(selectedMarker);
+
                         selectedMarker = marker;
                     }
                 }else { //end selectedMarker added code
 
-                    i++;
-                    Marker marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
-                    marker.setTag(gauge);
+                    Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    marker.setTag(gaugeList.get(i));
                     markerList.add(marker);
                     nMarkerList.add(marker);
                 }
 
             }
-            Log.d("markersAdded5", "number of markers added: " + i);
         }
         addMarkersToDB(nMarkerList);
         Log.d("markersAdded2", "finish");
         //invisibleLayout.setVisibility(View.GONE);
         Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
+
+
     }
+
+
+    private void addMarkersUIThread(List<Gauge> gaugeList, Float zoom){
+
+        invisibleLayout.setVisibility(View.VISIBLE);
+        long currentTime = System.currentTimeMillis();
+        long futureTime = currentTime + 200;
+        while(System.currentTimeMillis() < futureTime){
+
+        }
+
+        Log.d("markersAdded1", "STart");
+        //invisibleLayout.setVisibility(View.VISIBLE);
+        Log.d("markersAdded3", String.valueOf(invisibleLayout.getVisibility()));
+        List<Marker> nMarkerList = new ArrayList<Marker>();
+        Log.d("markersAdded5","loop started");
+        for(int i=0; i<gaugeList.size();i++){
+            LatLng gauge = new LatLng(gaugeList.get(i).getGaugeLatitude(), gaugeList.get(i).getGaugeLongitude());
+            if(!checkMarkers(gaugeList.get(i).getGaugeID())){
+                //start selectedMarker added code
+                if(selectedMarker != null){
+
+                    Marker marker;
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+                        marker = mMap.addMarker(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()));
+                    }else {
+                        marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    }
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                    Log.d("markerStuff",String.valueOf(selectedMarker) +"   " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+                    if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gaugeList.get(i).getGaugeID())){
+
+                        markerList.remove(selectedMarker);
+
+                        selectedMarker = marker;
+                    }
+                }else { //end selectedMarker added code
+
+                    Marker marker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(gauge).title(gaugeList.get(i).getGaugeName()), zoom));
+                    marker.setTag(gaugeList.get(i));
+                    markerList.add(marker);
+                    nMarkerList.add(marker);
+                }
+
+            }
+        }
+        addMarkersToDB(nMarkerList);
+        Log.d("markersAdded2", "finish");
+        //invisibleLayout.setVisibility(View.GONE);
+        Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
+
+        addMarkers(gaugeList,zoom);
+        invisibleLayout.setVisibility(View.GONE);
+
+    }
+
 
     private void addMarkersToDB(List<Marker> mList){
 
-        GaugeApplication.myDBHelper.addMarkers(mList);
+        myDBHelper.addMarkers(mList);
     }
 
     private boolean checkMarkers(String identifier){
 
-        return GaugeApplication.myDBHelper.checkMarkerExists(identifier);
+        return myDBHelper.checkMarkerExists(identifier);
     }
 
 
-    private static MarkerOptions iconChangedOptions (Context context, MarkerOptions markerOptions, Float zoom){
+    private MarkerOptions iconChangedOptions (MarkerOptions markerOptions, Float zoom){
 
-
-
-        if(zoom == zoomLevel[0]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,60, 60)));
-        }else if(zoom == zoomLevel [1]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,60, 60)));
-        }else if(zoom == zoomLevel[2]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,40, 40)));
+        if(zoom > zoomLevel[0]){
+            //markerOptions.icon(BitmapDescriptorFactory.defaultMarker());
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+        }else if(zoom > zoomLevel [1] && zoom <= zoomLevel[0]){
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(60, 60)));
+        }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(40, 40)));
         }else{
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,20, 20)));
+            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(20, 20)));
         }
         return markerOptions;
     }
 
 
-    private static void resetSelectedMarker(Context context){
+    private void resetSelectedMarker(){
 
         Gauge oldGauge = (Gauge) selectedMarker.getTag();
         markerList.remove(selectedMarker);
         selectedMarker.remove();
         LatLng oldLatLng = new LatLng(oldGauge.getGaugeLatitude(),oldGauge.getGaugeLongitude());
-        Marker oldMarker = mMap.addMarker(iconChangedOptions(context,new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),previousZoom));
+        Marker oldMarker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),mMap.getCameraPosition().zoom));
         oldMarker.setTag(oldGauge);
         markerList.add(oldMarker);
 
     }
 
-    private static Bitmap resizeMapIcons(Context context,int width, int height){
+    public Bitmap resizeMapIcons(int width, int height){
 
         Log.d("bitmap1","start");
         //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
 
-        Drawable drawable = context.getResources().getDrawable(R.drawable.marker_circle);
+        Drawable drawable = getResources().getDrawable(R.drawable.marker_circle);
         if(drawable instanceof  BitmapDrawable){
           //  Log.d("mapPosition7", "bitmap drawable");
             return ((BitmapDrawable)drawable).getBitmap();
@@ -1056,39 +1306,38 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         return resizedBitmap;
     }
 
-    private static Bitmap homeMarkerBitmap(Context context){
-
-        Log.d("bitmap1","start");
-        //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
-
-        Drawable drawable = context.getResources().getDrawable(R.drawable.marker_circle_home);
-        if(drawable instanceof  BitmapDrawable){
-            //  Log.d("mapPosition7", "bitmap drawable");
-            return ((BitmapDrawable)drawable).getBitmap();
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0,0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-
-        //Log.d("mapPosition5", "bitmap value: " + String.valueOf(bitmap));
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 60, 60, false);
-        Log.d("bitmap2","finish");
-        return resizedBitmap;
-    }
-
     @Override
     public boolean onMarkerClick(final Marker marker){
 
-
+        /*if(loadGaugeTask != null) {
+            if (loadGaugeTask.getStatus() == AsyncTask.Status.RUNNING || loadGaugeTask.getStatus() == AsyncTask.Status.PENDING) {
+                loadGaugeTask.cancel(true);
+                Log.d("loadGauge", "cancelled");
+            }
+        }*/
         Gauge gauge = (Gauge)marker.getTag();
+
+        //ActivateFavoriteButton buttonTask = new ActivateFavoriteButton();
+        //buttonTask.execute(gauge);
+
+
+
+
         searchView.clearFocus();
         if(gauge != null){
             if(selectedMarker != null) {
                 if (!((Gauge) selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())) {
                     Log.d("markerStuff7", "different Marker clicked");
-                    resetSelectedMarker(mContext);
+                    /*Gauge oldGauge = (Gauge) selectedMarker.getTag();
+                    markerList.remove(selectedMarker);
+                    selectedMarker.remove();
+                    LatLng oldLatLng = new LatLng(oldGauge.getGaugeLatitude(),oldGauge.getGaugeLongitude());
+                    Marker oldMarker = mMap.addMarker(iconChangedOptions(new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),mMap.getCameraPosition().zoom));
+                    oldMarker.setTag(oldGauge);
+                    markerList.add(oldMarker);*/
+                    resetSelectedMarker();
+
+
                 } else {
                     Log.d("markerStuff7", "same Marker clicked");
                     //do nothing
@@ -1128,124 +1377,257 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return true;
         }
 
-
     }
 
-    private static class GetGaugesParams{
-        Context context;
-        List<Gauge> gauges;
-        private GetGaugesParams(Context context, List<Gauge> gauges){
-            this.context = context;
-            this.gauges = gauges;
-        }
-
-    }
-
-    private static class GetGauges extends AsyncTask<GetGaugesParams, Void, GetGaugesParams>{
+    private class GetGauges extends AsyncTask<Void, Void, List<Gauge>>{
         @Override
-        protected GetGaugesParams doInBackground(GetGaugesParams... params){
+        protected List<Gauge> doInBackground(Void... params){
 
-            Context context = params[0].context;
             Log.d("getGauges",String.valueOf(homeLocation));
             allGauges = getAllGauges();
-            GetLocations getLocations = new GetLocations(homeLocation,allGauges);
-            return new GetGaugesParams(context,getLocations.getClosestGauges(250));
+            GetLocations gl = new GetLocations(homeLocation,allGauges);
+            return gl.getClosestGauges(250);
         }
         @Override
-        protected void onPostExecute(GetGaugesParams result){
+        protected void onPostExecute(List<Gauge> result){
 
-
-            Context context = result.context;
-            myGaugeList = result.gauges;
+            myList = result;
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-            SupportMapFragment mapFragment = (SupportMapFragment)mFragmentManager.findFragmentById(R.id.map);
-            mapFragment.getMapAsync((OnMapReadyCallback) context);
+            SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.map);
+            mapFragment.getMapAsync(MainFragActivity.this);
 
 
         }
 
         private List<Gauge> getAllGauges(){
 
-            return GaugeApplication.myDBHelper.getAllGauges();
+            return myDBHelper.getAllGauges();
         }
     }
 
+    /*public class LoadGauge extends AsyncTask<Gauge, Void, LoadGaugeParams>{
 
 
+        View loadingPanel = (View)findViewById(R.id.listLoadingPanel);
+        View gaugeText = (View)findViewById(R.id.gauge_data_text);
+        @Override protected void onPreExecute(){
 
-
-
-
-
-
-    private static class MoveLocationParams{
-        Context context;
-        String id;
-        Gauge gauge;
-        LinearLayout gaugeDataLayout;
-        FragmentManager fragmentManager;
-        private MoveLocationParams(Context context, String id, Gauge gauge, LinearLayout gaugeDataLayout, FragmentManager fragmentManager){
-            this.context = context;
-            this.id = id;
-            this.gauge = gauge;
-            this.gaugeDataLayout = gaugeDataLayout;
-            this.fragmentManager = fragmentManager;
+            gaugeDataLayout.setVisibility(View.VISIBLE);
+            gaugeText.setVisibility(View.GONE);
+            loadingPanel.setVisibility(View.VISIBLE);
         }
-    }
-
-
-
-
-    private static class MoveToLocation extends AsyncTask<MoveLocationParams,Void,MoveLocationParams>{
 
         @Override
-        protected MoveLocationParams doInBackground(MoveLocationParams... params){
+        protected LoadGaugeParams doInBackground(Gauge... gauge){
 
-            Context context = params[0].context;
-            String id = params[0].id;
-            LinearLayout gaugeDataLayout = params[0].gaugeDataLayout;
-            FragmentManager fragmentManager = params[0].fragmentManager;
-            Gauge gauge = GaugeApplication.myDBHelper.getLocationFromIdentifier(id);
-            if(gauge.getGaugeName() != null){
-                return new MoveLocationParams(context,id,gauge,gaugeDataLayout,fragmentManager);
+
+
+            GaugeData gaugeData = new GaugeData(gauge[0].getGaugeID());
+            GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
+            boolean isFavorite = myDBHelper.isFavorite(gauge[0]);
+
+            LoadGaugeParams params = new LoadGaugeParams(gaugeReadParseObject,gauge[0],isFavorite);
+
+            return params;
+        }
+
+        @Override protected void onPostExecute(LoadGaugeParams result){
+
+
+
+            if(result.isFavorite){
+                favoriteButton.setSelected(true);
+            }else{
+                favoriteButton.setSelected(false);
             }
+            TextView gaugeNameText = (TextView)findViewById(R.id.gauge_name);
+            TextView waterHeight = (TextView) findViewById(R.id.water_height);
+            TextView time = (TextView) findViewById(R.id.reading_time);
+            TextView floodWarning = (TextView)findViewById(R.id.flood_warning);
+            waterHeight.setTextSize(TypedValue.COMPLEX_UNIT_SP,40);
+
+
+            if(result.gaugeReadParseObject.getDatumList() != null && result.gaugeReadParseObject.getDatumList().size() > 0) {
+
+
+                String gaugeName = result.gauge.getGaugeName();
+                String water = result.gaugeReadParseObject.getDatumList().get(0).getPrimary() + getResources().getString(R.string.feet_unit);
+
+
+                Log.d("onPostExecute result", "valid is: " + result.gaugeReadParseObject.getDatumList().get(0).getValid() + " primary is: " + result.gaugeReadParseObject.getDatumList().get(0).getPrimary());
+                gaugeNameText.setText(gaugeName);
+                waterHeight.setText(water);
+                floodWarning.setText(getFloodWarning(result.gaugeReadParseObject.getSigstages(),result.gaugeReadParseObject.getDatumList().get(0).getPrimary()));
+                String dateString = result.gaugeReadParseObject.getDatumList().get(0).getValid();
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
+                Date convertedDate = new Date();
+                try {
+                    convertedDate = dateFormat.parse(dateString);
+
+
+                } catch (ParseException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (NullPointerException e){
+                    e.printStackTrace();
+                }
+                Date date = Calendar.getInstance().getTime();
+                DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+                TimeZone tz = TimeZone.getDefault();
+                Date now = new Date();
+                int offsetFromUtc = tz.getOffset(now.getTime());
+                Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
+
+                Log.d("xmlData", "date is: " + date.getTime());
+                long offset = convertedDate.getTime() + offsetFromUtc;
+                Log.d("xmlData", "date with offset is: " + offset);
+                Date correctTZDate = new Date(offset);
+
+
+                Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
+                time.setText(formatter.format(correctTZDate));
+                loadingPanel.setVisibility(View.GONE);
+                gaugeText.setVisibility(View.VISIBLE);
+            }
+            else{
+                gaugeNameText.setText(result.gauge.getGaugeName());
+                waterHeight.setText(getResources().getString(R.string.no_data));
+                waterHeight.setTextSize(TypedValue.COMPLEX_UNIT_SP,18);
+                time.setText("");
+                loadingPanel.setVisibility(View.GONE);
+                gaugeText.setVisibility(View.VISIBLE);
+            }
+        }
+
+        private String getFloodWarning(Sigstages sigstages, String waterHeight){
+
+            double minorDouble = 0.0;
+            double majorDouble = 0.0;
+            double moderateDouble = 0.0;
+            double waterDouble = 0.0;
+
+            if(sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
+                return "";
+            }else {
+
+                try {
+                    waterDouble = Double.parseDouble(waterHeight);
+
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+
+                if(sigstages.getMajor() != null ){
+
+                    try {
+                        majorDouble = Double.parseDouble(sigstages.getMajor());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+
+                    if(waterDouble >= majorDouble){
+                        return getResources().getString(R.string.major_flooding);
+                    }
+                }
+
+                if(sigstages.getModerate() !=null){
+                    try{
+                        moderateDouble = Double.parseDouble(sigstages.getModerate());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                    if(waterDouble >= moderateDouble){
+                        return getResources().getString(R.string.moderate_flooding);
+                    }
+                }
+                if(sigstages.getFlood() !=null){
+
+                    try{
+                        minorDouble = Double.parseDouble(sigstages.getFlood());
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                    if(waterDouble >= minorDouble){
+                        return getResources().getString(R.string.minor_flooding);
+                    }
+                }
+
+
+            }
+            return "";
+
+        }
+    }*/
+
+
+
+
+
+
+
+
+
+
+
+    private class MoveToLocation extends AsyncTask<String,Void,Gauge>{
+
+        @Override
+        protected Gauge doInBackground(String... params){
+
+
+            Gauge gauge = myDBHelper.getLocationFromIdentifier(params[0]);
+            if(gauge.getGaugeName() != null){
+
+                return gauge;
+
+            }
+
+
+
             return null;
         }
 
         @Override
-        protected void onPostExecute(MoveLocationParams moveLocationParams){
+        protected void onPostExecute(Gauge gauge){
 
-            if(moveLocationParams != null) {
+            if(gauge != null) {
 
-                Gauge gauge = moveLocationParams.gauge;
-                LinearLayout gaugeDataLayout = moveLocationParams.gaugeDataLayout;
-                FragmentManager fragmentManager = moveLocationParams.fragmentManager;
 
-                mMap.clear();
-                markerList.clear();
-                selectedMarker = null;
-                GaugeApplication.myDBHelper.clearMarkers();
-                Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                        position(myLatLng).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(moveLocationParams.context))).title("My Location"));
-                myLocationMarker.setTag(null);
 
-                Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude())).title(gauge.getGaugeName()));
-                marker.setTag(gauge);
-                selectedMarker = marker;
-                marker.remove();
-                selectedMarker.setTag(gauge);
-                Log.d("markerStuff10",String.valueOf(selectedMarker) + " , " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+                int a = 0;
+                if(a == 0){
+                    mMap.clear();
+                    markerList.clear();
+                    selectedMarker = null;
+                    myDBHelper.clearMarkers();
+                    Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
+                            position(myLatLng).icon(BitmapDescriptorFactory.
+                            defaultMarker(BitmapDescriptorFactory.HUE_AZURE)).title("My Location"));
+                    myLocationMarker.setTag(null);
+
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude())).title(gauge.getGaugeName()));
+                    marker.setTag(gauge);
+                    selectedMarker = marker;
+                    marker.remove();
+                    selectedMarker.setTag(gauge);
+                    Log.d("markerStuff10",String.valueOf(selectedMarker) + " , " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+
+                }
+
+
 
 
                 LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12));
+
 
                 if(gaugeDataLayout.getVisibility() != View.VISIBLE){
                     gaugeDataLayout.setVisibility(View.VISIBLE);
                 }
-
                 Bundle bundle = new Bundle();
                 bundle.putSerializable("gauge",gauge);
+                FragmentManager fragmentManager = getSupportFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                 LoadGaugeFragment loadGaugeFragment = new LoadGaugeFragment();
                 loadGaugeFragment.setArguments(bundle);
@@ -1255,35 +1637,102 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                 }
                 fragmentTransaction.commit();
+
+
+                //LoadGauge task = new LoadGauge();
+                //task.execute(gauge);
+            }
+
+        }
+    }
+
+    private class LoadGaugeParams{
+
+        GaugeReadParseObject gaugeReadParseObject;
+        Gauge gauge;
+        boolean isFavorite;
+
+        private LoadGaugeParams(GaugeReadParseObject gaugeReadParseObject,Gauge gauge, boolean isFavorite){
+
+            this.gaugeReadParseObject = gaugeReadParseObject;
+            this.gauge = gauge;
+            this.isFavorite = isFavorite;
+        }
+    }
+
+    private class AddFavorite extends AsyncTask<Gauge,Void,Gauge>{
+
+        @Override
+        protected Gauge doInBackground(Gauge... params){
+
+            myDBHelper.addFavorite(params[0]);
+            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
+            return params[0];
+        }
+
+        @Override
+        protected void onPostExecute(Gauge result){
+            String toastText =result.getGaugeName() + getResources().getString(R.string.add_favorite);
+            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    }
+
+
+    private class RemoveFavorite extends AsyncTask<Gauge,Void,Gauge>{
+
+        @Override
+        protected Gauge doInBackground(Gauge... params){
+
+            myDBHelper.removeFavorite(params[0]);
+            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
+            return params[0];
+        }
+
+        @Override
+        protected void onPostExecute(Gauge result){
+            String toastText = result.getGaugeName() + getResources().getString(R.string.remove_favorite);
+            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            toast.show();
+
+        }
+    }
+
+    private class ActivateFavoriteButton extends AsyncTask<Gauge, Void, Boolean>{
+
+        @Override
+        protected Boolean doInBackground(Gauge... params){
+            if(myDBHelper.isFavorite(params[0])){
+                return true;
+            }else {
+                return false;
             }
         }
-    }
 
-    private static class UpdateDBParams{
-        Context context;
-        boolean dbEmpty;
-        private UpdateDBParams(Context context, boolean dbEmpty){
-            this.context = context;
-            this.dbEmpty = dbEmpty;
+        @Override
+        protected void onPostExecute(Boolean result){
+
+            if(result){
+                favoriteButton.setSelected(true);
+            }else{
+                favoriteButton.setSelected(false);
+            }
+
         }
     }
 
-    //Makes sure the DB data is up to date with the latest source XML data from MY_URL
-    private static class UpdateDataBaseTask extends AsyncTask<UpdateDBParams,Void,UpdateDBParams>{
+    private class OpenDataBaseTask extends AsyncTask<Void,Void,Location>{
 
-        /*
-         *checks if the DB data version and the source XML data version match
-         *if versions match, continue without updating DB
-         *if versions don't match, download the data from source and update the DB
-         */
         @Override
-        protected UpdateDBParams doInBackground(UpdateDBParams...params){
+        protected Location doInBackground(Void...params){
 
-            boolean dbEmpty;
             List<Gauge> gaugeList = new ArrayList<Gauge>();
             int xmlVersion = checkXMLVersion();
             int dbVersion = checkDataBaseVersion();
-            if(dbVersion != xmlVersion && xmlVersion != -1){
+            if(xmlVersion == -1){
+                //could not obtain xml Version
+            }
+            if(dbVersion != xmlVersion){
                 //get xml data and add to database
                 Log.d("versionCheck1","versions don't match");
                 Log.d("versionCheck2",String.valueOf(xmlVersion) + " " + String.valueOf(dbVersion));
@@ -1301,66 +1750,68 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 //everything is good
                 Log.d("versionCheck3","versions match");
             }
-            if(GaugeApplication.myDBHelper.getGaugesCount() > 0){
-                dbEmpty = false;
-            }else {
-                dbEmpty = true;
-            }
-
-
-
-            Context context = params[0].context;
-            return new UpdateDBParams(context,dbEmpty);
+            return homeLocation;
         }
 
         @Override
-        protected void onPostExecute(UpdateDBParams result){
+        protected void onPostExecute(Location result){
 
-            boolean databaseEmpty = result.dbEmpty;
-            Context context = result.context;
+
             Location location = new Location("");
-
-            //set a default location if location data cannot be obtained
-            if(homeLocation == null){
+            Bundle bundle = new Bundle();
+            if(result == null){
                 location.setLatitude(38.904722);
                 location.setLongitude(-77.016389);
             }else{
-                location = homeLocation;
+                location = result;
             }
-            //if we had to set the default default location, use a middle zoom
-            //if we were able to obtain user's location, use closest zoom
+
+
             if(homeLocation == null){
-                homeLocation = location;
-                mapZoomLevel = MIDDLE_ZOOM;
+                distanceAway = 20;
             }else{
-                mapZoomLevel = CLOSEST_ZOOM;
+                distanceAway = 5;
             }
+
+
             previousLocation = homeLocation;
-
-            if(databaseEmpty) {
-                CharSequence text = "Error: Could not obtain gauge data";
-                Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
-                toast.show();
-            }
-
-            GetGaugesParams params = new GetGaugesParams(context,null);
             GetGauges task = new GetGauges();
-            task.execute(params);
+            task.execute();
+
+
+            //switch to launching to mapFragment, commenting below out
+            /*bundle.putParcelable("MY_LOCATION",location);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            FragmentHome fragmentHome = new FragmentHome();
+            fragmentHome.setArguments(bundle);
+            fragmentTransaction.add(R.id.home_fragment_container, fragmentHome, "home_fragment");
+            fragmentTransaction.commit();*/
+
+
+
         }
 
-        /**
-         * Check the version of the data in Table.Gauges
-         * @return Returns the version as an Integer
-         */
         private int checkDataBaseVersion(){
 
-            return GaugeApplication.myDBHelper.getDataVersion();
+            int dataBaseVersion = 0;
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+
+            }
+            return myDBHelper.getDataVersion();
         }
 
-        /**
-         * Check if data is enabled, then check the version of the XML source
-         * @return returns the source XML version as an Integer
-         */
         private int checkXMLVersion(){
 
             int xmlVersion = -1;
@@ -1399,54 +1850,46 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
 
-        /**
-         *Downloads the source data from MY_URL and sends it to WeatherXmlParser for parsing
-         * @return Returns a List of Gauges that has been parsed from the XML source data
-         * @throws XmlPullParserException thrown if error in parsing XML data
-         * @throws IOException thrown if error in reading data
-         */
         private List<Gauge> downloadXML() throws XmlPullParserException, IOException {
 
             Log.d("downloadXML1","Start");
             InputStream stream = null;
             // Instantiate the parser
             WeatherXmlParser weatherXmlParser = new WeatherXmlParser();
-            List<Gauge> gaugeList;
+            List<Gauge> gaugeList = null;
 
             try {
                 stream = downloadUrl(MY_URL);
                 gaugeList = weatherXmlParser.parse(stream);
-                // Makes sure that the InputStream is closed after the app is finished using it.
+                // Makes sure that the InputStream is closed after the app is
+                // finished using it.
             } finally {
                 if (stream != null) {
                     stream.close();
                 }
             }
-
-
             Log.d("downloadXML2","Finish, gauge list size: " + gaugeList.size());
             return gaugeList;
         }
 
-        /**
-         * Receives a list of Gauges to add to the DB, along with the version number of the XML source
-         * @param gaugeList List<Gauge> to be added to the database
-         * @param version Version number as Integer of the XML to be appended to each DB entry
-         */
         private void addGaugesToDB(List<Gauge> gaugeList, int version){
 
-            GaugeApplication.myDBHelper.addGauges(gaugeList,version);
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+
+            myDBHelper.addGauges(gaugeList,version);
 
         }
 
-        /**
-         * Returns the version of the XML file hosted at MY_URL as an Integer
-         * Uses CheckXMLVersion to parse the data received from downloadUrl()
-         * @param urlString The URL as a string
-         * @return Returns the version of the XML file as an Integer
-         * @throws XmlPullParserException if an error occurs while parsing the XML data
-         * @throws IOException if there is an error while reading the data
-         */
         private int checkVersion(String urlString)throws XmlPullParserException, IOException{
 
             Log.d("location15","checking version");
@@ -1465,20 +1908,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
             Log.d("location17",String.valueOf(version));
             return version;
+
         }
 
-        /**
-         * Returns the source data from MY_URL as an InputStream
-         * @param urlString Receives the URL as a string
-         * @return Returns the data as an InputStream
-         * @throws IOException if an error occurs while reading the site data
-         */
         private InputStream downloadUrl(String urlString) throws IOException {
             URL url = new URL(urlString);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            //don't use a cached version
-            conn.setUseCaches(false);
-            conn.setDefaultUseCaches(false);
             conn.setReadTimeout(10000 /* milliseconds */);
             conn.setConnectTimeout(15000 /* milliseconds */);
             conn.setRequestMethod("GET");
@@ -1489,37 +1924,29 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-    /**
-     * Class used to store parameters needed for LoadFragmentGaugeAsync
-     */
-    private static class LoadFragmentGaugeParams{
-        Gauge gauge;
-        GaugeFragParams gaugeFragParams;
-        FragmentManager fragmentManager;
-        private LoadFragmentGaugeParams(Gauge gauge, GaugeFragParams gaugeFragParams, FragmentManager fragmentManager){
-            this.gauge = gauge;
-            this.gaugeFragParams = gaugeFragParams;
-            this.fragmentManager = fragmentManager;
-        }
-    }
+    private class LoadGaugeFragmentAsync extends AsyncTask<Gauge,Void,GaugeFragParams>{
 
-    /*Loads the FragmentGauge that displays all information about the selected Gauge
-     *Receives the selected Gauge as a parameter
-     */
-    private static class LoadFragmentGaugeAsync extends AsyncTask<LoadFragmentGaugeParams,Void,LoadFragmentGaugeParams>{
-
-        //Check if Gauge is a favorite and has notifications available
-        //Bundled into GaugeFragParams obj and passed to onPostExecute
         @Override
-        protected LoadFragmentGaugeParams doInBackground(LoadFragmentGaugeParams... params){
+        protected GaugeFragParams doInBackground(Gauge... params){
 
-            Gauge gauge = params[0].gauge;
-            FragmentManager fragmentManager = params[0].fragmentManager;
-            boolean isFavorite = GaugeApplication.myDBHelper.isFavorite(gauge);
+            DataBaseHelperGauges myDBHelper = new DataBaseHelperGauges(mContext);
+            try{
+                myDBHelper.createDataBase();
+
+            }catch (IOException e){
+                throw new Error("unable to create db");
+            }
+            try{
+                myDBHelper.openDataBase();
+            }catch (SQLException sqle){
+                throw sqle;
+            }
+            Gauge gauge = params[0];
+            boolean isFavorite = myDBHelper.isFavorite(gauge);
             Log.d("fragFave",String.valueOf(isFavorite));
             int notificationState = 0;
             if(isFavorite) {
-                notificationState = GaugeApplication.myDBHelper.getFavoriteNotificationState(gauge);
+                notificationState = myDBHelper.getFavoriteNotificationState(gauge);
             }
             boolean isNotifiable = true;
             if(notificationState == 0){
@@ -1527,25 +1954,18 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
 
             GaugeFragParams gaugeFragParams = new GaugeFragParams(gauge,isFavorite,isNotifiable);
-            return new LoadFragmentGaugeParams(null,gaugeFragParams,fragmentManager);
+            return gaugeFragParams;
         }
 
-        /*Creates a Bundle that includes two instances of the selected gauge, and two booleans,
-         *one for if notifications are enabled and one for if a favorite
-         */
         @Override
-        protected void onPostExecute(LoadFragmentGaugeParams result){
+        protected void onPostExecute(GaugeFragParams params){
 
-            GaugeFragParams params = result.gaugeFragParams;
-            FragmentManager fragmentManager = result.fragmentManager;
             Bundle bundle = new Bundle();
-            /*selected_tag used as a check by FragmentGauge to return MainFragActivity to the
-             *correct state
-             */
             bundle.putSerializable("selected_gauge",params.getGauge());
             bundle.putSerializable("gauge",params.getGauge());
             bundle.putBoolean("isFavorite",params.isFavorite());
             bundle.putBoolean("isNotifiable",params.isNotifiable());
+            FragmentManager fragmentManager = getSupportFragmentManager();
             FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
             FragmentGauge fragmentGauge = new FragmentGauge();
             fragmentGauge.setArguments(bundle);
@@ -1554,119 +1974,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         }
     }
-
-    /**
-     * Method used to start the process of updating the location by defining the LocationCallback
-     * When LocationCallback mLocationCallback is called from startLocationUpdates(),
-     * static Location updatedLocation gets updated with the most recent location obtained
-     * After defining LocationCallback, startLocationUpdates() is called.
-     * Camera is moved to LastKnownLocation while location updates are being received.
-     * @param context Activity Context that must be passed to startLocationUpdates()
-     * @param mFusedLocationProviderClient FusedLocationProviderClient that must be passed to
-     *                                     startLocationUpdates()
-     */
-    private static void updateLocation(Context context, final FusedLocationProviderClient mFusedLocationProviderClient) {
-
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                Log.d("getLocationUpdateAsync5","in onLocationResult");
-                if (locationResult == null) {
-                    Log.d("getLocationUpdateAsync3","location result is null");
-                    return;
-                }else{
-                    Log.d("getLocationUpdateAsync4","location result is not null");
-                }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-
-                    Log.d("getLocationUpdateAsync",location.getLatitude() + ", " + location.getLongitude());
-                    updatedLocation = location;
-                    stopLocationUpdates(mFusedLocationProviderClient);
-                }
-            }
-        };
-
-        startLocationUpdates(context,mFusedLocationProviderClient);
-        getLastKnownLocation(context,mFusedLocationProviderClient);
-        Location location = homeLocation;
-        myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
-        LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-        moveCamera(context,latLng,latLng,CLOSEST_ZOOM);
-    }
-
-    /**
-     * Checks if location permission is enabled, then gets the last known location
-     * Updates the static Location homeLocation with new last known location
-     * @param context Activty Context
-     * @param mFusedLocationClient FusedLocationProviderClient used to get the location
-     */
-    public static void getLastKnownLocation(Context context, FusedLocationProviderClient mFusedLocationClient){
-
-        //run the code if location permission is enabled
-        if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mFusedLocationClient.getLastLocation().addOnSuccessListener((Activity)context, new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    Log.d("location5", "logging");
-                    if (location != null) {
-                        //do location stuff
-                        Log.d("location10", location.getLatitude() + ", " + location.getLongitude());
-                        homeLocation = location;
-                    }
-                }
-            });
-        }
-    }
-
-    /**
-     * Moves the map camera to a new position
-     * Clears all the markers from the map and from storage
-     * Adds the user's location to the map
-     * @param homeLatLngPos The lat long coordinates of user's location
-     * @param targetLatLngPos The lat long coordinates of where the camera will move to
-     * @param zoom Floating point that represents the zoom level of the camera
-     */
-
-    private static void moveCamera(Context context, LatLng homeLatLngPos, LatLng targetLatLngPos, float zoom){
-
-        mMap.clear();
-        markerList.clear();
-        selectedMarker = null;
-        GaugeApplication.myDBHelper.clearMarkers();
-        Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                position(homeLatLngPos).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(context))).title("My Location"));
-        myLocationMarker.setTag(null);
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(targetLatLngPos, zoom));
-
-
-    }
-
-    /**
-     * Clears the views from the map
-     * Clears search text and removes focus to hide keyboard
-     * Hides the layout that holds the LoadGaugeFragment
-     * Resets the selected marker to null
-     * @param context Activity's context
-     * @param searchView Activity's searchView that will be cleared
-     * @param gaugeDataLayout Linear Layout that holds the LoadGaugeFragment fragment
-     */
-    private static void clearViews(Context context,SearchView searchView, LinearLayout gaugeDataLayout){
-        searchView.setQuery("",false);
-        searchView.clearFocus();
-        if(gaugeDataLayout.getVisibility() != View.GONE) {
-            gaugeDataLayout.setVisibility(View.GONE);
-            if(selectedMarker != null){
-                resetSelectedMarker(context);
-                selectedMarker = null;
-            }
-        }
-
-    }
-
-
-
 
 
 

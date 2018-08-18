@@ -101,39 +101,19 @@
 
 
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="10dp">
             <android.support.design.widget.FloatingActionButton
-                android:layout_margin="10dp"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
-                android:id="@+id/floating_button_map_location"
+                android:layout_margin="30dp"
+                android:id="@+id/floating_button_map"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:elevation="5dp"
                 app:borderWidth="0dp"
-                android:src="@drawable/baseline_gps_fixed_black"
+                android:src="@drawable/btn_rating_star_off_normal_holo_dark_crop"
                 app:rippleColor="@android:color/darker_gray"
                 app:backgroundTint="@android:color/background_light"
                 android:layout_gravity="bottom|end"
                 android:clickable="true" />
-            <android.support.design.widget.FloatingActionButton
-                android:layout_margin="10dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto"
-                android:id="@+id/floating_button_map_favorites"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:elevation="5dp"
-                app:borderWidth="0dp"
-                android:src="@drawable/btn_rating_star_on_normal_holo_dark_crop"
-                app:rippleColor="@android:color/darker_gray"
-                app:backgroundTint="@android:color/background_light"
-                android:layout_gravity="bottom|end"
-                android:clickable="true" />
-            </LinearLayout>
 
 
         </FrameLayout>
