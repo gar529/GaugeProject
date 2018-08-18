@@ -260,7 +260,7 @@ public class FavoritesListViewAdapter extends BaseAdapter {
         private String addUnits(Context context, String waterHeight){
 
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
-            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "0");
 
             int unit = Integer.parseInt(unitsPref);
 

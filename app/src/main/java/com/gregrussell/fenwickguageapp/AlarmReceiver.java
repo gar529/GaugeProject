@@ -337,7 +337,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         private String addUnits(String waterHeight){
 
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(mContext);
-            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "0");
 
             int unit = Integer.parseInt(unitsPref);
 
