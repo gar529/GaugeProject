@@ -2,31 +2,23 @@
 
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
-
-        <shape android:shape="oval">
-
-            <solid android:color="#33000000"/>
-            <padding android:bottom="10dp"/>
-
-
-        </shape>
-    </item>
-    <item>
         <shape android:shape="oval">
 
             <solid android:color="#FFFFFF"/>
         </shape>
     </item>
-    <item android:top="5dp"
-        android:bottom="5dp"
-        android:left="5dp"
-        android:right="5dp">
+    <item android:top="3dp"
+        android:bottom="3dp"
+        android:left="3dp"
+        android:right="3dp">
         <shape
             android:shape = "oval">
             <size
                 android:width="50dp"
-                android:height="65dp"/>
-            <solid android:color="#EA4235"/>
+                android:height="50dp"/>
+            <solid android:color="#811414"/>
+            <stroke android:color="#EA4235"
+                android:width="15dp"/>
         </shape>
     </item>
 </layer-list>

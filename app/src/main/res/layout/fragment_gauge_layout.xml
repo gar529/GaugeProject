@@ -15,7 +15,6 @@
 
 
     <FrameLayout
-        android:id="@+id/fragment_gauge_frame_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         >
