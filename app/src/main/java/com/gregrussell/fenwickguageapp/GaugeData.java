@@ -1,6 +1,5 @@
 package com.gregrussell.fenwickguageapp;
 
-import android.net.TrafficStats;
 import android.util.Log;
 
 import org.xmlpull.v1.XmlPullParserException;
@@ -28,57 +27,36 @@ public class GaugeData {
 
         GaugeReadParseObject gaugeReadParseObject = new GaugeReadParseObject();
 
-        int uid = android.os.Process.myUid();
-
-        long recv = TrafficStats.getUidRxBytes(uid);
-        Log.d("networkStats1","data received: " + recv/1000);
-
-        try {
-            gaugeReadParseObject = readGauge(gaugeID);
+        for(int i = 0; i < 3;i++) {
+            try {
+                gaugeReadParseObject = readGauge(gaugeID);
 
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (XmlPullParserException e) {
-            e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (XmlPullParserException e) {
+                e.printStackTrace();
+            }
         }
 
-        Log.d("networkStats2","data received: " + recv / 1000);
         return gaugeReadParseObject;
+
+
     }
-
-    public RSSParsedObj getRssData(){
-
-        RSSParsedObj rssParsed = new RSSParsedObj();
-
-        int uid = android.os.Process.myUid();
-
-        long recv = TrafficStats.getUidRxBytes(uid);
-        Log.d("networkStats1","data received: " + recv/1000);
-
-        try {
-            rssParsed = downloadRSS(gaugeID);
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (XmlPullParserException e) {
-            e.printStackTrace();
-        }
-
-        Log.d("networkStats2","data received: " + recv / 1000);
-        return rssParsed;
-    }
-
-
 
     private GaugeReadParseObject readGauge(String gaugeID) throws IOException, XmlPullParserException {
-        String urlString = "https://water.weather.gov/ahps2/hydrograph_to_xml.php?gage=" + gaugeID + "&output=xml";
+        String urlString = "https://water.weather.gov/ahps2/hydrograph_to_xml.php?gage=" + gaugeID;
         InputStream stream = null;
         // Instantiate the parser
         GaugeReadingXMLParser gaugeXmlParser = new GaugeReadingXMLParser();
+        List<Datum> datums = null;
+        String valid = null;
+        String primary = null;
+        String summary = null;
+        Calendar rightNow = Calendar.getInstance();
+        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
 
-        GaugeReadParseObject gaugeReadParseObject;
+        GaugeReadParseObject gaugeReadParseObject = new GaugeReadParseObject();
         try {
             stream = downloadUrl(urlString);
             gaugeReadParseObject = gaugeXmlParser.parse(stream);
@@ -111,53 +89,6 @@ public class GaugeData {
         conn.connect();
         return conn.getInputStream();
 
-    }
-
-
-    private RSSParsedObj downloadRSS(String gaugeID) throws IOException, XmlPullParserException{
-
-        Log.d("rssParser","downloadRSS");
-        String urlString = "https://water.weather.gov/ahps2/rss/obs/" + gaugeID.toLowerCase() + ".rss";
-        InputStream stream = null;
-        // Instantiate the parser
-        RSSParser parser = new RSSParser();
-        RSSParsedObj parsedRSS = new RSSParsedObj();
-
-        int uid = android.os.Process.myUid();
-
-        long recv = TrafficStats.getUidRxBytes(uid);
-        Log.d("networkStats1","data received: " + recv/1000);
-
-        try {
-            stream = downloadRssUrl(urlString);
-            parsedRSS = parser.parse(stream);
-            // Makes sure that the InputStream is closed after the app is finished using it.
-        } finally {
-            if (stream != null) {
-                stream.close();
-            }
-        }
-
-
-        Log.d("networkStats2","data received: " + recv/1000);
-        Log.d("rssParser2","stage is: " + String.valueOf(parsedRSS.getStage()));
-        return parsedRSS;
-    }
-
-    private InputStream downloadRssUrl(String urlString) throws IOException {
-        Log.d("rssParser","downloadRssURL");
-        URL url = new URL(urlString);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        //don't use a cached version
-        conn.setUseCaches(false);
-        conn.setDefaultUseCaches(false);
-        conn.setReadTimeout(10000 /* milliseconds */);
-        conn.setConnectTimeout(15000 /* milliseconds */);
-        conn.setRequestMethod("GET");
-        conn.setDoInput(true);
-        // Starts the query
-        conn.connect();
-        return conn.getInputStream();
     }
 
 
