@@ -1,9 +1,14 @@
 package com.gregrussell.fenwickguageapp;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.SQLException;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -40,57 +45,41 @@ import java.util.TimeZone;
 public class FragmentGauge extends Fragment {
 
     Context mContext;
-    DataBaseHelperGauges myDBHelper;
-    Gauge gauge;
-    boolean isFavorite;
-    boolean isNotifiable;
+    static Gauge gauge;
+    static boolean isFavorite;
+    static boolean isNotifiable;
     ImageView favoriteButton;
     Switch notificationSwitch;
     Toast notificationToast;
     Gauge selectedGauge;
-    final int DAY_IN_MILLIS = 24 * 60 * 60 * 1000;
-    final int ONE_DAY = 0;
-    final int TWO_DAYS = 1;
-    final int ALL = 2;
+    final static int DAY_IN_MILLIS = 24 * 60 * 60 * 1000;
+    final static int ONE_DAY = 0;
+    final static int TWO_DAYS = 1;
+    final static int ALL = 2;
     ListView listView;
     RelativeLayout progressBarLayout;
-    TextView gaugeNameTextView;
-    TextView currentDateTextView;
-    TextView currentStageTextView;
-    TextView floodWarningTextView;
-    TextView highStageTextView;
-    TextView highDateTextView;
-    TextView lowStageTextView;
-    TextView lowDateTextView;
-    final double BAD_DATA = -12654894165.41586;
+    final static double BAD_DATA = -12654894165.41586;
     SwipeRefreshLayout swipeRefreshLayout;
+    Toolbar toolbar;
+    View view;
 
     //0 not changed, -1 disabled, 1 enabled
-    int switchChangedByFavorite;
+    static int switchChangedByFavorite;
 
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle onSavedInstanceState){
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container, Bundle onSavedInstanceState){
 
 
-        View view = inflater.inflate(R.layout.fragment_gauge_layout, container,false);
+        Log.d("FragmentGaugeOnCreate", "onCreate");
+        view = inflater.inflate(R.layout.fragment_gauge_layout, container,false);
         mContext = getContext();
         switchChangedByFavorite = 0;
-        myDBHelper = new DataBaseHelperGauges(mContext);
-        try{
-            myDBHelper.createDataBase();
-        }catch (IOException e){
-            throw new Error("unable to create db");
-        }
-        try{
-            myDBHelper.openDataBase();
-        }catch (SQLException sqle){
-            throw sqle;
-        }
-        Toolbar toolbar = (Toolbar)view.findViewById(R.id.gauge_fragment_toolbar);
+        toolbar = (Toolbar)view.findViewById(R.id.gauge_fragment_toolbar);
         toolbar.inflateMenu(R.menu.gauge_fragment_toolbar_menu);
 
-        toolbar.setNavigationIcon(android.support.v7.appcompat.R.drawable.abc_ic_ab_back_material);
+        toolbar.setNavigationIcon(getResources().getDrawable(R.drawable.baseline_arrow_back_black));
+
 
 
         //RelativeLayout view2 = (RelativeLayout)view.findViewById(R.id.action_gauge_frag_favorite);
@@ -98,16 +87,12 @@ public class FragmentGauge extends Fragment {
         favoriteButton = ((RelativeLayout)view.findViewById(R.id.action_gauge_frag_favorite)).findViewById(R.id.gauge_frag_favorite_button);
         listView = (ListView)view.findViewById(R.id.fragment_gauge_list);
         progressBarLayout = (RelativeLayout)view.findViewById(R.id.fragment_gauge_progress_bar_layout);
-        gaugeNameTextView = (TextView)view.findViewById(R.id.fragment_gauge_name);
-        currentDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_current_date);
-        currentStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_current_stage);
-        floodWarningTextView = (TextView)view.findViewById(R.id.fragment_gauge_flood_warning);
-        highStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_high_stage);
-        highDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_high_date);
-        lowStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_low_stage);
-        lowDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_low_date);
         swipeRefreshLayout = (SwipeRefreshLayout)view.findViewById(R.id.fragment_gauge_swipe_refresh);
-        MenuItem item = toolbar.getMenu().findItem(R.id.action_gauge_frag_favorite);
+
+
+
+
+
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(AbsListView absListView, int i) {
@@ -134,14 +119,14 @@ public class FragmentGauge extends Fragment {
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
+                GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,
+                        progressBarLayout,swipeRefreshLayout,null);
                 GetGaugeData getGaugeData = new GetGaugeData();
-                getGaugeData.execute();
+                getGaugeData.execute(params);
             }
         });
 
-        Bundle bundle = this.getArguments();
-
-
+        final Bundle bundle = this.getArguments();
 
         if(bundle != null){
             selectedGauge =(Gauge)bundle.get("selected_gauge");
@@ -201,15 +186,22 @@ public class FragmentGauge extends Fragment {
                 if(favoriteButton.isSelected()){
                     favoriteButton.setSelected(false);
                     Log.d("fragGauge2",String.valueOf(gauge));
-
+                    FavoriteParams params = new FavoriteParams(mContext,notificationSwitch);
                     RemoveFavorite task = new RemoveFavorite();
-                    task.execute();
+                    task.execute(params);
 
                 }else{
-                    favoriteButton.setSelected(true);
-                    Log.d("fragGauge1",String.valueOf(gauge));
-                    AddFavorite task = new AddFavorite();
-                    task.execute();
+                    if(GaugeApplication.myDBHelper.getFavoritesCount() < 10) {
+                        favoriteButton.setSelected(true);
+                        Log.d("fragGauge1", String.valueOf(gauge));
+                        FavoriteParams params = new FavoriteParams(mContext, notificationSwitch);
+                        AddFavorite task = new AddFavorite();
+                        task.execute(params);
+                    }else{
+                        CharSequence text = getContext().getResources().getString(R.string.favorite_limit);
+                        Toast toast = Toast.makeText(getContext(),text,Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
                 }
             }
         });
@@ -222,7 +214,47 @@ public class FragmentGauge extends Fragment {
 
         //gaugeName
 
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
 
+                switch (item.getItemId()){
+                    case R.id.action_settings:
+
+                        /*Intent intent = new Intent();
+                        intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        Uri uri = Uri.fromParts("package", getContext().getPackageName(), null);
+                        intent.setData(uri);
+                        startActivity(intent);*/
+
+                        /*if(bundle != null){
+                            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            SettingsContainerFragment settingsFragment = new SettingsContainerFragment();
+                            settingsFragment.setArguments(bundle);
+                            fragmentTransaction.replace(R.id.main_layout, settingsFragment, "settings_container_fragment").commit();
+                        }else{
+                            FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                            fragmentTransaction.replace(R.id.main_layout, new SettingsContainerFragment(), "settings_container_fragment").commit();
+                        }*/
+
+                        Intent intent = new Intent(getActivity(),SettingsActivity.class);
+                        startActivity(intent);
+
+
+
+
+
+                        return true;
+
+                    default:
+
+                        return false;
+                }
+
+            }
+        });
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -236,6 +268,7 @@ public class FragmentGauge extends Fragment {
                     loadGaugeFragment.setArguments(bundle);
                     fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                 }
+                Log.d("backpressed9,", String.valueOf(selectedGauge));
                 fragmentTransaction.remove(fragmentManager.findFragmentByTag("gauge_fragment"));
                 fragmentTransaction.commit();
                 if(fragmentManager.getBackStackEntryCount() > 0){
@@ -248,9 +281,8 @@ public class FragmentGauge extends Fragment {
 
 
 
+        progressBarLayout.setVisibility(View.VISIBLE);
 
-        GetGaugeData getGaugeData = new GetGaugeData();
-        getGaugeData.execute();
 
 
 
@@ -258,65 +290,102 @@ public class FragmentGauge extends Fragment {
         return view;
     }
 
+    @Override
+    public void onStart(){
+        super.onStart();
+
+        Log.d("FragmentGauge","onStart");
+        GetGaugeDataParams params = new GetGaugeDataParams(mContext,view,listView,progressBarLayout,
+                swipeRefreshLayout,null);
+        GetGaugeData getGaugeData = new GetGaugeData();
+        getGaugeData.execute(params);
+    }
+
     private void enableNotifications(boolean enable){
 
+        NotificationParams params = new NotificationParams(mContext,enable);
         EnableNotifications task = new EnableNotifications();
-        task.execute(enable);
+        task.execute(params);
 
     }
 
-    private class EnableNotifications extends AsyncTask<Boolean,Void,Boolean> {
+    private static class NotificationParams{
+        Context context;
+        boolean enable;
+        private NotificationParams(Context context, boolean enable){
+            this.context = context;
+            this.enable = enable;
+        }
+    }
+
+    private static class EnableNotifications extends AsyncTask<NotificationParams,Void,NotificationParams> {
 
         @Override
-        protected Boolean doInBackground(Boolean... params){
+        protected NotificationParams doInBackground(NotificationParams... params){
 
-            boolean enable = params[0];
-            myDBHelper.changeFavoriteNotificationState(gauge,enable);
+            Context context = params[0].context;
+            boolean enable = params[0].enable;
+            GaugeApplication.myDBHelper.changeFavoriteNotificationState(gauge,enable);
 
-            return enable;
+            return new NotificationParams(context,enable);
         }
 
         @Override
-        protected void onPostExecute(Boolean enable){
+        protected void onPostExecute(NotificationParams result){
+            boolean enable = result.enable;
+            Context context = result.context;
             String toastText = "";
             if(enable) {
-                toastText = mContext.getResources().getString(R.string.notifications_enabled) + gauge.getGaugeName();
+                toastText = context.getResources().getString(R.string.notifications_enabled) + gauge.getGaugeName();
             }else{
-                toastText = mContext.getResources().getString(R.string.notifications_disabled) + gauge.getGaugeName();
+                toastText = context.getResources().getString(R.string.notifications_disabled) + gauge.getGaugeName();
             }
             if(switchChangedByFavorite == 0) {
-                notificationToast = Toast.makeText(mContext, toastText, Toast.LENGTH_SHORT);
-                notificationToast.show();
+                Toast toast = Toast.makeText(context, toastText, Toast.LENGTH_SHORT);
+                toast.show();
             }
             switchChangedByFavorite = 0;
         }
     }
 
-    private class AddFavorite extends AsyncTask<Void,Void,Boolean> {
+    private static class FavoriteParams{
+        Context context;
+        Switch notificationSwitch;
+
+        private FavoriteParams(Context context, Switch notificationSwitch){
+            this.context = context;
+            this.notificationSwitch = notificationSwitch;
+        }
+    }
+
+    private static class AddFavorite extends AsyncTask<FavoriteParams,Void,FavoriteParams> {
 
         @Override
-        protected Boolean doInBackground(Void... params){
+        protected FavoriteParams doInBackground(FavoriteParams... params){
 
-
-            myDBHelper.addFavorite(gauge);
-            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
-            return true;
+            Context context = params[0].context;
+            Switch notificationSwitch = params[0].notificationSwitch;
+            GaugeApplication.myDBHelper.addFavorite(gauge);
+            Log.d("numFavorites",String.valueOf(GaugeApplication.myDBHelper.getFavoritesCount()));
+            return new FavoriteParams(context,notificationSwitch);
         }
 
         @Override
-        protected void onPostExecute(Boolean result){
+        protected void onPostExecute(FavoriteParams result){
 
+            Switch notificationSwitch = result.notificationSwitch;
+            Context context = result.context;
             if(!notificationSwitch.isChecked()) {
                 switchChangedByFavorite = 1;
             }
             else {
                 switchChangedByFavorite = 0;
             }
-            isFavorite = result;
+            isFavorite = true;
             notificationSwitch.setChecked(true);
 
-            String toastText = gauge.getGaugeName() + mContext.getResources().getString(R.string.add_favorite);
-            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            String toastText = gauge.getGaugeName() + context.getResources().getString(R.string.add_favorite);
+            Toast toast = Toast.makeText(context,toastText,Toast.LENGTH_SHORT);
             toast.show();
 
 
@@ -326,30 +395,34 @@ public class FragmentGauge extends Fragment {
     }
 
 
-    private class RemoveFavorite extends AsyncTask<Void,Void,Boolean>{
+    private static class RemoveFavorite extends AsyncTask<FavoriteParams,Void,FavoriteParams>{
 
         @Override
-        protected Boolean doInBackground(Void... params){
+        protected FavoriteParams doInBackground(FavoriteParams... params){
 
+            Context context = params[0].context;
+            Switch notificationSwitch = params[0].notificationSwitch;
             Log.d("fragGauge3",String.valueOf(gauge));
-            myDBHelper.removeFavorite(gauge);
-            Log.d("numFavorites",String.valueOf(myDBHelper.getFavoritesCount()));
-            return false;
+            GaugeApplication.myDBHelper.removeFavorite(gauge);
+            Log.d("numFavorites",String.valueOf(GaugeApplication.myDBHelper.getFavoritesCount()));
+            return new FavoriteParams(context,notificationSwitch);
         }
 
         @Override
-        protected void onPostExecute(Boolean result){
+        protected void onPostExecute(FavoriteParams result){
 
+            Switch notificationSwitch = result.notificationSwitch;
+            Context context = result.context;
             if(notificationSwitch.isChecked()) {
                 switchChangedByFavorite = -1;
             }
             else {
                 switchChangedByFavorite = 0;
             }
-            isFavorite = result;
+            isFavorite = false;
             notificationSwitch.setChecked(false);
-            String toastText = gauge.getGaugeName() + mContext.getResources().getString(R.string.remove_favorite);
-            Toast toast = Toast.makeText(mContext,toastText,Toast.LENGTH_SHORT);
+            String toastText = gauge.getGaugeName() + context.getResources().getString(R.string.remove_favorite);
+            Toast toast = Toast.makeText(context,toastText,Toast.LENGTH_SHORT);
             toast.show();
 
 
@@ -358,39 +431,82 @@ public class FragmentGauge extends Fragment {
         }
     }
 
-    private class GetGaugeData extends AsyncTask<Void,Void,GaugeReadParseObject>{
+    private static class GetGaugeDataParams{
+        Context context;
+        View view;
+        ListView listView;
+        RelativeLayout progressLayout;
+        SwipeRefreshLayout swipeRefreshLayout;
+        GaugeReadParseObject gaugeReadParseObject;
+        private GetGaugeDataParams(Context context, View view, ListView listView,
+                                   RelativeLayout progressLayout, SwipeRefreshLayout swipeRefreshLayout,
+                                   GaugeReadParseObject gaugeReadParseObject){
+            this.context = context;
+            this.view = view;
+            this.listView = listView;
+            this.progressLayout = progressLayout;
+            this.swipeRefreshLayout = swipeRefreshLayout;
+            this.gaugeReadParseObject = gaugeReadParseObject;
+
+        }
+    }
+
+    private static class GetGaugeData extends AsyncTask<GetGaugeDataParams,Void,GetGaugeDataParams>{
 
         @Override
         protected void onPreExecute(){
 
-            progressBarLayout.setVisibility(View.VISIBLE);
+
         }
 
         @Override
-        protected GaugeReadParseObject doInBackground(Void... params){
+        protected GetGaugeDataParams doInBackground(GetGaugeDataParams... params){
 
+            GetGaugeDataParams getGaugeDataParams = params[0];
+            Context context =getGaugeDataParams.context;
+            View view = getGaugeDataParams.view;
+            ListView listView = getGaugeDataParams.listView;
+            RelativeLayout progress = getGaugeDataParams.progressLayout;
+            SwipeRefreshLayout swipe = getGaugeDataParams.swipeRefreshLayout;
             GaugeData gaugeData = new GaugeData(gauge.getGaugeID());
             GaugeReadParseObject gaugeReadParseObject = gaugeData.getData();
             List<Datum> list = gaugeReadParseObject.getDatumList();
             gaugeReadParseObject.setDatumList(filterList(list,ONE_DAY));
 
-            return gaugeReadParseObject;
+            return new GetGaugeDataParams(context,view,listView,progress,swipe,gaugeReadParseObject);
         }
 
         @Override
-        protected void onPostExecute(GaugeReadParseObject gaugeReadParseObject){
+        protected void onPostExecute(GetGaugeDataParams result){
+
+            Context context = result.context;
+            View view = result.view;
+            GaugeReadParseObject gaugeReadParseObject = result.gaugeReadParseObject;
+            ListView listView = result.listView;
+            RelativeLayout progressBarLayout = result.progressLayout;
+            SwipeRefreshLayout swipeRefreshLayout = result.swipeRefreshLayout;
+
+            TextView gaugeNameTextView = (TextView)view.findViewById(R.id.fragment_gauge_name);
+            TextView currentDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_current_date);
+            TextView currentStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_current_stage);
+            TextView floodWarningTextView = (TextView)view.findViewById(R.id.fragment_gauge_flood_warning);
+            TextView highStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_high_stage);
+            TextView highDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_high_date);
+            TextView lowStageTextView = (TextView)view.findViewById(R.id.fragment_gauge_low_stage);
+            TextView lowDateTextView = (TextView)view.findViewById(R.id.fragment_gauge_low_date);
 
             if(gaugeReadParseObject!=null && gaugeReadParseObject.getDatumList() !=null && gaugeReadParseObject.getDatumList().size() > 0){
+                GaugeApplication gaugeApplication = new GaugeApplication();
                 List<Datum>datumList = gaugeReadParseObject.getDatumList();
-                String currentStageText = addUnits(gaugeReadParseObject.getDatumList().get(0).getPrimary());
+                String currentStageText = addUnits(context,gaugeReadParseObject.getDatumList().get(0).getPrimary());
                 String currentDateText = convertDate(gaugeReadParseObject.getDatumList().get(0).getValid());
                 DataBound dataBound = new DataBound(datumList);
-                String highStageText = addUnits(dataBound.getHighStage());
-                String lowStageText = addUnits(dataBound.getLowStage());
+                String highStageText = addUnits(context,dataBound.getHighStage());
+                String lowStageText = addUnits(context,dataBound.getLowStage());
                 String highDateText = convertDate(dataBound.getHighDate());
                 String lowDateText = convertDate(dataBound.getLowDate());
                 String gaugeName = gauge.getGaugeName();
-                String floodWarning = getFloodWarning(gaugeReadParseObject.getSigstages(),gaugeReadParseObject.getDatumList().get(0).getPrimary());
+                String floodWarning = getFloodWarning(context,gaugeReadParseObject.getSigstages(),gaugeReadParseObject.getDatumList().get(0).getPrimary());
 
                 gaugeNameTextView.setText(gaugeName);
                 currentStageTextView.setText(currentStageText);
@@ -408,7 +524,7 @@ public class FragmentGauge extends Fragment {
                 }
 
 
-                GaugeDataListAdapter gaugeDataListAdapter = new GaugeDataListAdapter(mContext,datumList);
+                GaugeDataListAdapter gaugeDataListAdapter = new GaugeDataListAdapter(context,datumList);
                 if(listView !=null){
                     listView.setAdapter(null);
                     listView.setAdapter(gaugeDataListAdapter);
@@ -424,10 +540,10 @@ public class FragmentGauge extends Fragment {
 
 
             }else{
-                currentStageTextView.setText(mContext.getResources().getString(R.string.no_data_short));
-                currentDateTextView.setText(mContext.getResources().getString(R.string.no_data));
-                highStageTextView.setText(mContext.getResources().getString(R.string.no_data_short));
-                lowStageTextView.setText(mContext.getResources().getString(R.string.no_data_short));
+                currentStageTextView.setText(context.getResources().getString(R.string.no_data_short));
+                currentDateTextView.setText(context.getResources().getString(R.string.no_data));
+                highStageTextView.setText(context.getResources().getString(R.string.no_data_short));
+                lowStageTextView.setText(context.getResources().getString(R.string.no_data_short));
 
                 if(listView !=null){
                     listView.setAdapter(null);
@@ -441,304 +557,357 @@ public class FragmentGauge extends Fragment {
 
         }
 
+        private String addUnits(Context context, String waterHeight){
 
-    }
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
+            String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
 
-    private List<Datum> filterList(List<Datum> datumList, int filter){
+            int unit = Integer.parseInt(unitsPref);
 
-        Date currentDate = Calendar.getInstance().getTime();
-        Long currentDateMillis = currentDate.getTime();
-
-        switch (filter) {
-            case 0:
-                return filterOneDay(datumList, currentDateMillis);
-            case 1:
-                return filterTwoDays(datumList, currentDateMillis);
-            case 2:
-                return datumList;
-            default:
-                return datumList;
-        }
-
-
-
-
-
-
-    }
-
-    private List<Datum> filterOneDay(List<Datum> datumList, Long currentDateMillis){
-
-
-        List<Datum> filteredList = new ArrayList<Datum>();
-        for(int i =0; i<datumList.size();i++){
-
-            Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
-            Long difference = currentDateMillis - dateInMillis;
-            Log.d("dateInListIssue2", "difference is: " + difference / 1000 / 60 / 60 + " day in millis is: " + DAY_IN_MILLIS / 1000 / 60 / 60);
-            if(difference <= DAY_IN_MILLIS){
-                filteredList.add(datumList.get(i));
-                DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
-                Date current = new Date(currentDateMillis);
-                Date data = new Date(dateInMillis);
-                String dateString = formatter.format(current);
-                String dateString1 = formatter.format(data);
-
-
-                Log.d("dateInListIssue1",  "current time: " + dateString + " time added: " + dateString1);
+            switch (unit){
+                case GaugeApplication.FEET:
+                    return convertToFeet(context, waterHeight);
+                case GaugeApplication.METERS:
+                    return convertToMeters(context, waterHeight);
+                default:
+                    return "";
             }
+
+
+
         }
 
-        return filteredList;
+        private String convertToFeet(Context context, String waterHeight){
+
+            double feetDouble = Double.parseDouble(waterHeight);
+            return String.format("%.2f",feetDouble) + context.getResources().getString(R.string.feet_unit);
+        }
+
+        private String convertToMeters(Context context, String waterHeight){
+
+            double meterConverter = .3048;
+            double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+            String meterString = String.valueOf(meterDouble);
+            return String.format("%.2f",meterDouble) + context.getResources().getString(R.string.meter_unit);
 
 
 
-    }
+        }
 
-    private List<Datum> filterTwoDays(List<Datum> datumList, Long currentDateMillis){
+        private List<Datum> filterList(List<Datum> datumList, int filter){
 
-        List<Datum> filteredList = new ArrayList<Datum>();
-        for(int i =0; i<datumList.size();i++){
+            Date currentDate = Calendar.getInstance().getTime();
+            Long currentDateMillis = currentDate.getTime();
 
-            Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
-            Long difference = currentDateMillis - dateInMillis;
-            if(difference <= DAY_IN_MILLIS * 2){
-                filteredList.add(datumList.get(i));
+            switch (filter) {
+                case 0:
+                    return filterOneDay(datumList, currentDateMillis);
+                case 1:
+                    return filterTwoDays(datumList, currentDateMillis);
+                case 2:
+                    return datumList;
+                default:
+                    return datumList;
             }
+
         }
 
-        return filteredList;
-
-    }
-
-    private Date convertStringToDate(String dateString){
-
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-        Date convertedDate = new Date();
-        try {
-            convertedDate = dateFormat.parse(dateString);
+        private List<Datum> filterOneDay(List<Datum> datumList, Long currentDateMillis){
 
 
-        } catch (ParseException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (NullPointerException e){
-            e.printStackTrace();
-        }
-        Date date = Calendar.getInstance().getTime();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
-        TimeZone tz = TimeZone.getDefault();
-        Date now = new Date();
-        int offsetFromUtc = tz.getOffset(now.getTime());
-        Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
+            List<Datum> filteredList = new ArrayList<Datum>();
+            if(datumList!=null) {
+                for (int i = 0; i < datumList.size(); i++) {
 
-        Log.d("xmlData", "date is: " + date.getTime());
-        long offset = convertedDate.getTime() + offsetFromUtc;
-        Log.d("xmlData", "date with offset is: " + offset);
-        Date correctTZDate = new Date(offset);
-
-        return convertedDate;
-    }
-
-    private List<Datum> sortDatumList(List<Datum> datumList){
-
-        Collections.sort(datumList, new Comparator<Datum>() {
-            @Override
-            public int compare(Datum o1, Datum o2) {
-                int i;
-
-                if(parseStage(o1.getPrimary()) < parseStage(o2.getPrimary())){
-                    i = -1;
-                } else if(parseStage(o1.getPrimary()) > parseStage(o2.getPrimary())){
-                    i = 1;
-                }else {
-                    i=0;
-                }
-                return i;
-            }
-        });
-
-        return datumList;
-
-    }
+                    Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
+                    Long difference = currentDateMillis - dateInMillis;
+                    Log.d("dateInListIssue2", "difference is: " + difference / 1000 / 60 / 60 + " day in millis is: " + DAY_IN_MILLIS / 1000 / 60 / 60);
+                    if (difference <= DAY_IN_MILLIS) {
+                        filteredList.add(datumList.get(i));
+                        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
+                        Date current = new Date(currentDateMillis);
+                        Date data = new Date(dateInMillis);
+                        String dateString = formatter.format(current);
+                        String dateString1 = formatter.format(data);
 
 
-
-    private double parseStage(String stage){
-
-        double waterDouble = BAD_DATA;
-        try {
-            waterDouble = Double.parseDouble(stage);
-
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-        }
-
-        return waterDouble;
-
-    }
-
-
-    private String addUnits(String stage){
-
-        return stage +  getResources().getString(R.string.feet_unit);
-
-    }
-
-
-    private class DataBound{
-        private List<Datum> datumList;
-        private List<Datum> data;
-        private List<Datum> list;
-
-        public DataBound(List<Datum> datumList){
-            this.datumList = datumList;
-            list = new ArrayList<Datum>();
-            list.addAll(this.datumList);
-            data = sortDatumList(list);
-        }
-
-        public String getHighStage(){
-
-
-            for(int i = data.size() - 1; i > -1;i--) {
-
-                String highStage = data.get(i).getPrimary();
-                if (parseStage(highStage) != BAD_DATA){
-                    return highStage;
+                        Log.d("dateInListIssue1", "current time: " + dateString + " time added: " + dateString1);
+                    }
                 }
             }
-            return "No Data";
+
+            return filteredList;
+
+
+
         }
-        public String getLowStage(){
 
-            for(int i = 0; i < data.size();i++) {
+        private List<Datum> filterTwoDays(List<Datum> datumList, Long currentDateMillis){
 
-                String lowStage = data.get(i).getPrimary();
-                if (parseStage(lowStage) != BAD_DATA){
-                    return lowStage;
+            List<Datum> filteredList = new ArrayList<Datum>();
+            if(datumList!=null) {
+                for (int i = 0; i < datumList.size(); i++) {
+
+                    Long dateInMillis = convertStringToDate(datumList.get(i).getValid()).getTime();
+                    Long difference = currentDateMillis - dateInMillis;
+                    if (difference <= DAY_IN_MILLIS * 2) {
+                        filteredList.add(datumList.get(i));
+                    }
                 }
             }
-            return "No Data";
+
+            return filteredList;
 
         }
-        public String getHighDate(){
 
-            for(int i = data.size() - 1; i > -1;i--) {
+        private Date convertStringToDate(String dateString){
 
-                String highStage = data.get(i).getPrimary();
-                String highDate = data.get(i).getValid();
-                if (parseStage(highStage) != BAD_DATA){
-                    return highDate;
-                }
-            }
-            return "No Data";
-        }
-        public String getLowDate(){
-
-            for(int i = 0; i < data.size();i++) {
-
-                String lowStage = data.get(i).getPrimary();
-                String lowDate = data.get(i).getValid();
-                if (parseStage(lowStage) != BAD_DATA){
-                    return lowDate;
-                }
-            }
-            return "No Data";
-        }
-
-    }
-
-    private String convertDate(String dateString){
-
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH);
-        Date convertedDate = new Date();
-        try {
-            convertedDate = dateFormat.parse(dateString);
-
-
-        } catch (ParseException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (NullPointerException e){
-            e.printStackTrace();
-        }
-        Date date = Calendar.getInstance().getTime();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
-        TimeZone tz = TimeZone.getDefault();
-        Date now = new Date();
-        int offsetFromUtc = tz.getOffset(now.getTime());
-        Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
-
-        Log.d("xmlData", "date is: " + date.getTime());
-        long offset = convertedDate.getTime() + offsetFromUtc;
-        Log.d("xmlData", "date with offset is: " + offset);
-        Date correctTZDate = new Date(offset);
-
-
-        Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
-        return(formatter.format(convertedDate));
-
-    }
-
-    private String getFloodWarning(Sigstages sigstages, String waterHeight){
-
-        double minorDouble = 0.0;
-        double majorDouble = 0.0;
-        double moderateDouble = 0.0;
-        double waterDouble = 0.0;
-
-        if(sigstages.getMajor() == null && sigstages.getModerate() == null && sigstages.getFlood() == null){
-            return "";
-        }else {
-
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+            Date convertedDate = new Date();
             try {
-                waterDouble = Double.parseDouble(waterHeight);
+                convertedDate = dateFormat.parse(dateString);
+
+
+            } catch (ParseException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (NullPointerException e){
+                e.printStackTrace();
+            }
+            Date date = Calendar.getInstance().getTime();
+            DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
+            TimeZone tz = TimeZone.getDefault();
+            Date now = new Date();
+            int offsetFromUtc = tz.getOffset(now.getTime());
+            Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
+
+            Log.d("xmlData", "date is: " + date.getTime());
+            long offset = convertedDate.getTime() + offsetFromUtc;
+            Log.d("xmlData", "date with offset is: " + offset);
+            Date correctTZDate = new Date(offset);
+
+            return convertedDate;
+        }
+
+        private List<Datum> sortDatumList(List<Datum> datumList){
+
+            Collections.sort(datumList, new Comparator<Datum>() {
+                @Override
+                public int compare(Datum o1, Datum o2) {
+                    int i;
+
+                    if(parseStage(o1.getPrimary()) < parseStage(o2.getPrimary())){
+                        i = -1;
+                    } else if(parseStage(o1.getPrimary()) > parseStage(o2.getPrimary())){
+                        i = 1;
+                    }else {
+                        i=0;
+                    }
+                    return i;
+                }
+            });
+
+            return datumList;
+
+        }
+
+
+
+        private double parseStage(String stage){
+
+            double waterDouble = BAD_DATA;
+            try {
+                waterDouble = Double.parseDouble(stage);
 
             } catch (NumberFormatException e) {
                 e.printStackTrace();
             }
 
-            if(sigstages.getMajor() != null ){
-
-                try {
-                    majorDouble = Double.parseDouble(sigstages.getMajor());
-                }catch (NumberFormatException e){
-                    e.printStackTrace();
-                }
-
-                if(waterDouble >= majorDouble){
-                    return getResources().getString(R.string.major_flooding);
-                }
-            }
-
-            if(sigstages.getModerate() !=null){
-                try{
-                    moderateDouble = Double.parseDouble(sigstages.getModerate());
-                }catch (NumberFormatException e){
-                    e.printStackTrace();
-                }
-                if(waterDouble >= moderateDouble){
-                    return getResources().getString(R.string.moderate_flooding);
-                }
-            }
-            if(sigstages.getFlood() !=null){
-
-                try{
-                    minorDouble = Double.parseDouble(sigstages.getFlood());
-                }catch (NumberFormatException e){
-                    e.printStackTrace();
-                }
-                if(waterDouble >= minorDouble){
-                    return getResources().getString(R.string.minor_flooding);
-                }
-            }
-
+            return waterDouble;
 
         }
-        return "";
+
+
+
+
+        private class DataBound{
+            private List<Datum> datumList;
+            private List<Datum> data;
+            private List<Datum> list;
+
+            private DataBound(List<Datum> datumList){
+                this.datumList = datumList;
+                list = new ArrayList<Datum>();
+                list.addAll(this.datumList);
+                data = sortDatumList(list);
+            }
+
+            private String getHighStage(){
+
+
+                for(int i = data.size() - 1; i > -1;i--) {
+
+                    String highStage = data.get(i).getPrimary();
+                    if (parseStage(highStage) != BAD_DATA){
+                        return highStage;
+                    }
+                }
+                return "No Data";
+            }
+            private String getLowStage(){
+
+                for(int i = 0; i < data.size();i++) {
+
+                    String lowStage = data.get(i).getPrimary();
+                    if (parseStage(lowStage) != BAD_DATA){
+                        return lowStage;
+                    }
+                }
+                return "No Data";
+
+            }
+            private String getHighDate(){
+
+                for(int i = data.size() - 1; i > -1;i--) {
+
+                    String highStage = data.get(i).getPrimary();
+                    String highDate = data.get(i).getValid();
+                    if (parseStage(highStage) != BAD_DATA){
+                        return highDate;
+                    }
+                }
+                return "No Data";
+            }
+            private String getLowDate(){
+
+                for(int i = 0; i < data.size();i++) {
+
+                    String lowStage = data.get(i).getPrimary();
+                    String lowDate = data.get(i).getValid();
+                    if (parseStage(lowStage) != BAD_DATA){
+                        return lowDate;
+                    }
+                }
+                return "No Data";
+            }
+
+        }
+
+        private String convertDate(String dateString){
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH);
+            Date convertedDate = new Date();
+            try {
+                convertedDate = dateFormat.parse(dateString);
+
+
+            } catch (ParseException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (NullPointerException e){
+                e.printStackTrace();
+            }
+            Date date = Calendar.getInstance().getTime();
+            DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
+            TimeZone tz = TimeZone.getDefault();
+            Date now = new Date();
+            int offsetFromUtc = tz.getOffset(now.getTime());
+            Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
+
+            Log.d("xmlData", "date is: " + date.getTime());
+            long offset = convertedDate.getTime() + offsetFromUtc;
+            Log.d("xmlData", "date with offset is: " + offset);
+            Date correctTZDate = new Date(offset);
+
+
+            Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
+            return(formatter.format(convertedDate));
+
+        }
+
+        private String getFloodWarning(Context context, Sigstages sigstages, String waterHeight){
+
+            double actionDouble = 0.0;
+            double minorDouble = 0.0;
+            double majorDouble = 0.0;
+            double moderateDouble = 0.0;
+            double waterDouble = 0.0;
+
+            if(sigstages.getMajor() == null && sigstages.getModerate() == null &&
+                    sigstages.getFlood() == null && sigstages.getAction() == null){
+                return "";
+            }else {
+
+                try {
+                    waterDouble = Double.parseDouble(waterHeight);
+
+                } catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
+
+                if(sigstages.getMajor() != null ){
+
+                    try {
+                        majorDouble = Double.parseDouble(sigstages.getMajor());
+                        if(waterDouble >= majorDouble){
+                            return context.getResources().getString(R.string.major_flooding);
+                        }
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+
+
+                }
+
+                if(sigstages.getModerate() !=null){
+                    try{
+                        moderateDouble = Double.parseDouble(sigstages.getModerate());
+                        if(waterDouble >= moderateDouble){
+                            return context.getResources().getString(R.string.moderate_flooding);
+                        }
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+
+                }
+                if(sigstages.getFlood() !=null){
+
+                    try{
+                        minorDouble = Double.parseDouble(sigstages.getFlood());
+                        if(waterDouble >= minorDouble){
+                            return context.getResources().getString(R.string.minor_flooding);
+                        }
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+
+                }
+                if(sigstages.getAction() !=null){
+
+                    try{
+                        actionDouble = Double.parseDouble(sigstages.getAction());
+                        if(waterDouble >= actionDouble){
+                            return context.getResources().getString(R.string.action_flooding);
+                        }
+                    }catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+
+                }
+
+
+            }
+            return "";
+
+        }
 
     }
+
+
+
+
+
+
 
 
 

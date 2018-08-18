@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
 
@@ -26,7 +25,7 @@
             <size
                 android:width="50dp"
                 android:height="65dp"/>
-            <solid android:color="#EA4235"/>
+            <solid android:color="#358FEA"/>
         </shape>
     </item>
 </layer-list>

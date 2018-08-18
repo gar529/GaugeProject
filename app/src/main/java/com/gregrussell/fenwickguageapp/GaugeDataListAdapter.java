@@ -2,6 +2,8 @@ package com.gregrussell.fenwickguageapp;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,10 +22,10 @@ import java.util.TimeZone;
 
 public class GaugeDataListAdapter extends BaseAdapter {
 
-    LayoutInflater inflater;
-    Context mContext;
-    List<Datum> datumList;
-    View currentView;
+    private LayoutInflater inflater;
+    private Context mContext;
+    private List<Datum> datumList;
+    private View currentView;
 
     public GaugeDataListAdapter(Context mContext, List<Datum> datumList){
         this.mContext = mContext;
@@ -90,7 +92,7 @@ public class GaugeDataListAdapter extends BaseAdapter {
             e.printStackTrace();
         }
         Date date = Calendar.getInstance().getTime();
-        DateFormat formatter = new SimpleDateFormat("MMM dd h:mmaa");
+        DateFormat formatter = new SimpleDateFormat("MMM dd h:mma");
         TimeZone tz = TimeZone.getDefault();
         Date now = new Date();
         int offsetFromUtc = tz.getOffset(now.getTime());
@@ -107,9 +109,41 @@ public class GaugeDataListAdapter extends BaseAdapter {
 
     }
 
-    private String addUnits(String stage){
+    public String addUnits(String waterHeight){
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
+
+        int unit = Integer.parseInt(unitsPref);
+
+        switch (unit){
+            case GaugeApplication.FEET:
+                return convertToFeet(waterHeight);
+            case GaugeApplication.METERS:
+                return convertToMeters(waterHeight);
+            default:
+                return "";
+        }
 
 
-        return stage + mContext.getResources().getString(R.string.feet_unit);
+
     }
+
+    private String convertToFeet(String waterHeight){
+
+        double feetDouble = Double.parseDouble(waterHeight);
+        return String.format("%.2f",feetDouble) + mContext.getResources().getString(R.string.feet_unit);
+    }
+
+    private String convertToMeters(String waterHeight){
+
+        double meterConverter = .3048;
+        double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
+        String meterString = String.valueOf(meterDouble);
+        return String.format("%.2f",meterDouble) + mContext.getResources().getString(R.string.meter_unit);
+
+
+
+    }
+
 }
