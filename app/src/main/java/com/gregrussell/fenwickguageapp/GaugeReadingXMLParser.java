@@ -15,7 +15,7 @@ public class GaugeReadingXMLParser {
 
 
     private static final String ns = null;
-    private List<Datum> datums = new ArrayList<Datum>();
+    List<Datum> datums = new ArrayList<Datum>();
 
     public GaugeReadParseObject parse(InputStream in) throws XmlPullParserException, IOException {
 
@@ -94,7 +94,6 @@ public class GaugeReadingXMLParser {
     private Sigstages readSigstages(XmlPullParser parser) throws XmlPullParserException, IOException{
         //Log.d("xmlData","readSigstages");
         parser.require(XmlPullParser.START_TAG, ns, "sigstages");
-        String action = null;
         String flood = null;
         String moderate = null;
         String major = null;
@@ -105,10 +104,7 @@ public class GaugeReadingXMLParser {
                 continue;
             }
             String name = parser.getName();
-            if(name.equals("action")){
-                action = readAction(parser);
-            }
-            else if(name.equals("flood")){
+            if(name.equals("flood")){
                 flood = readFlood(parser);
             }else if(name.equals("moderate")){
                 moderate = readModerate(parser);
@@ -118,9 +114,6 @@ public class GaugeReadingXMLParser {
                 skip(parser);
             }
         }
-        if(action.equals("")){
-            action = null;
-        }
         if(flood.equals("")){
             flood = null;
         }
@@ -129,7 +122,6 @@ public class GaugeReadingXMLParser {
         }
         if(major.equals(""))
             major = null;
-        sig.setAction(action);
         sig.setFlood(flood);
         sig.setModerate(moderate);
         sig.setMajor(major);
@@ -168,12 +160,6 @@ public class GaugeReadingXMLParser {
                 datum.setValid(valid);
          return datum;
      }
-    private String readAction(XmlPullParser parser) throws IOException, XmlPullParserException{
-        parser.require(XmlPullParser.START_TAG,ns,"action");
-        String action = readText(parser);
-        parser.require(XmlPullParser.END_TAG,ns,"action");
-        return action;
-    }
 
      private String readFlood(XmlPullParser parser) throws IOException, XmlPullParserException{
         parser.require(XmlPullParser.START_TAG,ns,"flood");
@@ -197,20 +183,20 @@ public class GaugeReadingXMLParser {
      }
     // Processes valid tags in the site.
      private String readValid(XmlPullParser parser) throws IOException, XmlPullParserException{
-         Log.d("xmlData", "readingValid");
+        // Log.d("xmlData", "readingValid");
          parser.require(XmlPullParser.START_TAG, ns, "valid");
          String valid = readText(parser);
-        Log.d("xmlData", "Valid was read as " + valid);
+        // Log.d("xmlData", "Valid was read as " + valid);
          parser.require(XmlPullParser.END_TAG, ns, "valid");
          return valid;
      }
 
      // Processes primary tags in the site.
      private String readPrimary(XmlPullParser parser) throws IOException, XmlPullParserException{
-         Log.d("xmlData", "readingPrimary");
+        // Log.d("xmlData", "readingPrimary");
          parser.require(XmlPullParser.START_TAG, ns, "primary");
          String primary = readText(parser);
-         Log.d("xmlData", "primary was read as " + primary);
+        // Log.d("xmlData", "primary was read as " + primary);
          parser.require(XmlPullParser.END_TAG, ns, "primary");
          return primary;
      }

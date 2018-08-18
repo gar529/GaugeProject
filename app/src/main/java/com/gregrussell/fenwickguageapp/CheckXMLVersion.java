@@ -55,6 +55,33 @@ public class CheckXMLVersion {
         return version;
     }
 
+
+    /*private int readVersion(XmlPullParser parser) throws XmlPullParserException, IOException{
+        Log.d("xmlData", "readGaugeData");
+        parser.require(XmlPullParser.START_TAG, ns, "gauge");
+        int version = 0;
+        while(parser.next() != XmlPullParser.END_TAG){
+            if(parser.getEventType() != XmlPullParser.START_TAG){
+                continue;
+            }
+            String tag = parser.getName();
+            if(tag.equals(VERSION_TAG)){
+                int = readURL(parser);
+            }else if(tag.equals(NAME_TAG)){
+                name = readName(parser);
+            }else if(tag.equals(ID_TAG)){
+                id = readID(parser);
+            }else if(tag.equals(LAT_TAG)){
+                lat = readLat(parser);
+            }else if(tag.equals(LON_TAG)){
+                lon = readLon(parser);
+            }else{
+                skip(parser);
+            }
+        }
+        return new WeatherXmlParser.Gauge(url, name, id, lat, lon);
+    }*/
+
     //processes lon tags from site
     private int readVersion(XmlPullParser parser) throws IOException, XmlPullParserException{
         parser.require(XmlPullParser.START_TAG,ns,VERSION_TAG);

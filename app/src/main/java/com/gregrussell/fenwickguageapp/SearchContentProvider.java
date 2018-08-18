@@ -18,7 +18,7 @@ import java.io.IOException;
 
 public class SearchContentProvider extends ContentProvider {
 
-
+    DataBaseHelperGauges myDBHelper;
     public static final String AUTHORITY = "com.gregrussell.fenwickgaugeapp.SearchContentProvider";
     public static final Uri BASE_URI = Uri.parse("content://" + AUTHORITY);
     public static final Uri CONTENT_URI = Uri.parse("com.gregrussell.fenwickgaugeapp.SearchContentProvider/suggestions");
@@ -30,7 +30,18 @@ public class SearchContentProvider extends ContentProvider {
     public boolean onCreate() {
 
         Log.d("searchView6","content provider on create");
+        myDBHelper = new DataBaseHelperGauges(getContext());
+        try{
+            myDBHelper.createDataBase();
 
+        }catch (IOException e){
+            throw new Error("unable to create db");
+        }
+        try{
+            myDBHelper.openDataBase();
+        }catch (SQLException sqle){
+            throw sqle;
+        }
         //Log.d("searchview8",CONTENT_URI.getAuthority());
 
 
@@ -51,7 +62,7 @@ public class SearchContentProvider extends ContentProvider {
            String query = uri.getLastPathSegment().toLowerCase();
            String args[] = {"%"+query+"%","%"+query+"%"};
            Log.d("searchProvider6",query);
-           SQLiteDatabase db = GaugeApplication.myDBHelper.getReadableDatabase();
+           SQLiteDatabase db = myDBHelper.getReadableDatabase();
            String str = "";
            Log.d("searchProvider3", String.valueOf(selection));
            cursor = db.query(DataBaseHelperGauges.Suggestions.TABLE_NAME,

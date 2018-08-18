@@ -2,7 +2,6 @@ package com.gregrussell.fenwickguageapp;
 
 public class Sigstages {
 
-    private String action;
     private String flood;
     private String moderate;
     private String major;
@@ -11,20 +10,11 @@ public class Sigstages {
 
     }
 
-    public Sigstages(String action, String flood, String moderate, String major){
+    public Sigstages(String flood, String moderate, String major){
 
-        this.action = action;
         this.flood = flood;
         this.moderate = moderate;
         this.major = major;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getAction() {
-        return action;
     }
 
     public String getFlood(){
