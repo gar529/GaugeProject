@@ -44,7 +44,7 @@
     <string name="units_summary">Unit of measurement</string>
     <string name="feet">Imperial</string>
     <string name="meters">Metric</string>
-    <string name="permissions">Permissions</string>
+    <string name="permissions">Notifications and Permissions</string>
     <string name="settings_title">Settings</string>
     <string name="settings_category_title">App Settings</string>
 

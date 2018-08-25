@@ -101,14 +101,19 @@
 
 
             </LinearLayout>
+
+
+
             <LinearLayout
-                android:layout_width="wrap_content"
+
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="10dp">
+                android:layout_gravity="bottom"
+                android:gravity="bottom|end">
             <android.support.design.widget.FloatingActionButton
-                android:layout_margin="10dp"
+               android:layout_marginEnd="20dp"
+                android:layout_marginBottom="20dp"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
                 android:id="@+id/floating_button_map_location"
                 android:layout_width="wrap_content"
@@ -121,7 +126,8 @@
                 android:layout_gravity="bottom|end"
                 android:clickable="true" />
             <android.support.design.widget.FloatingActionButton
-                android:layout_margin="10dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="20dp"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
                 android:id="@+id/floating_button_map_favorites"
                 android:layout_width="wrap_content"
@@ -133,39 +139,24 @@
                 app:backgroundTint="@android:color/background_light"
                 android:layout_gravity="bottom|end"
                 android:clickable="true" />
+
+                <LinearLayout
+                    android:padding="10dp"
+                    android:id="@+id/gauge_data_layout"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@color/load_gauge_frag_background_dark"
+                    android:clickable="true">
+                </LinearLayout>
+
+
             </LinearLayout>
 
 
         </FrameLayout>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-        <LinearLayout
-            android:padding="10dp"
-            android:id="@+id/gauge_data_layout"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="3"
-            android:orientation="vertical"
-            android:clickable="true">
-
-
-
-
-
-        </LinearLayout>
 
 </LinearLayout>
 </android.support.design.widget.CoordinatorLayout>

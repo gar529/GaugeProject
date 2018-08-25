@@ -662,7 +662,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     /**
      * Method called when keyboard searchButton is pressed. Calls search()
      * @param query String inputted by user
-     * @return
+     * @return returns true, query handled in search()
      */
     @Override public boolean onQueryTextSubmit(String query) {
 
@@ -723,11 +723,13 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
 
-
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng,mapZoomLevel));
         searchView.clearFocus();
     }
 
+    /**
+     * This method loads the first set of markers around the user's home location
+     */
     private void loadInitialMarkers(){
         markerList = new ArrayList<Marker>();
         for(Gauge gauge : myGaugeList){
@@ -767,8 +769,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
         //if the camera has moved 5 miles, display a group of markers based on the zoom level
-
-
         //Get the groupings of markers and put them in an array
         GetLocations gl = new GetLocations(myLocation, allGauges);
         List[] gaugeListArray = gl.getClosestGaugesArray();
@@ -947,38 +947,47 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
 
+    /**
+     * This method adds a list of Gauges to the map as markers
+     * @param gaugeList List of Gauges that are to be added to the map
+     * @param zoom Float that represents the zoom of the camera
+     */
     private void addMarkers(List<Gauge> gaugeList, Float zoom){
         Log.d("markersAdded1", "STart");
-        //invisibleLayout.setVisibility(View.VISIBLE);
         Log.d("markersAdded3", String.valueOf(invisibleLayout.getVisibility()));
         List<Marker> nMarkerList = new ArrayList<Marker>();
         Log.d("markersAdded5","loop started");
-        int i = 0;
+
+
         for(Gauge gauge : gaugeList){
             LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
             Log.d("markersAdded6","Gauge being checked: " + gauge.getGaugeName() + " " + gauge.getGaugeID());
             if(!checkMarkers(gauge.getGaugeID())){
-                //start selectedMarker added code
+
+                //if a maker is selected, add a new maker in it's place with the default icon,
+                // else use a resized custom icon
                 if(selectedMarker != null){
                     Marker marker;
                     if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())){
                         marker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
-                        i++;
+
                     }else {
                         marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
-                        i++;
+
                     }
                     marker.setTag(gauge);
                     markerList.add(marker);
                     nMarkerList.add(marker);
                     Log.d("markerStuff",String.valueOf(selectedMarker) +"   " + ((Gauge)selectedMarker.getTag()).getGaugeID());
+
+                    //remove the previous selected marker from the list
                     if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())){
                         markerList.remove(selectedMarker);
                         selectedMarker = marker;
                     }
                 }else { //end selectedMarker added code
 
-                    i++;
+
                     Marker marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
                     marker.setTag(gauge);
                     markerList.add(marker);
@@ -986,28 +995,43 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 }
 
             }
-            Log.d("markersAdded5", "number of markers added: " + i);
+
         }
+        //insert the markers that were added to the map into the database
         addMarkersToDB(nMarkerList);
         Log.d("markersAdded2", "finish");
         //invisibleLayout.setVisibility(View.GONE);
         Log.d("markersAdded4", String.valueOf(invisibleLayout.getVisibility()));
     }
 
+    /**
+     * This method adds uses a DataBaseHelper to insert a list of markers into the Database
+     * @param mList The List of markers to be inserted into the Database
+     */
     private void addMarkersToDB(List<Marker> mList){
 
         GaugeApplication.myDBHelper.addMarkers(mList);
     }
 
+    /**
+     * This method uses a DatabaseHelper to search the database for markers that already exist
+     * in the database using a unique identifier (Gauge.getGaugeID())
+     * @param identifier
+     * @return
+     */
     private boolean checkMarkers(String identifier){
 
         return GaugeApplication.myDBHelper.checkMarkerExists(identifier);
     }
 
-
+    /**
+     *
+     * @param context
+     * @param markerOptions
+     * @param zoom
+     * @return
+     */
     private static MarkerOptions iconChangedOptions (Context context, MarkerOptions markerOptions, Float zoom){
-
-
 
         if(zoom == zoomLevel[0]){
             markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,60, 60)));
