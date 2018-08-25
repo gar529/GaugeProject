@@ -430,6 +430,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
 
+    /**
+     * This method uses the location permission to obtain the device's last known location and start
+     * the UpdateDataBaseTask class.
+     * @param context The activity context
+     * @param providerClient A FusedLocationProviderClient used as a parameter for getLastKnownLocation()
+     */
 
     private static void getMyLocation(Context context,FusedLocationProviderClient providerClient){
 
@@ -701,9 +707,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
 
+        Bitmap customHomeIcon = new CustomMapMarkerIcon(mContext).homeMarkerBitmap();
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                 position(myLatLng).icon(BitmapDescriptorFactory.
-                fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
+                fromBitmap(customHomeIcon)).title("My Location"));
         myLocationMarker.setTag(null);
         loadInitialMarkers();
         mMap.setOnCameraMoveStartedListener(new GoogleMap.OnCameraMoveStartedListener() {
@@ -734,7 +741,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         markerList = new ArrayList<Marker>();
         for(Gauge gauge : myGaugeList){
             LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
-            Marker marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()),mMap.getCameraPosition().zoom));
+            CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+            MarkerOptions markerOptions = customMapMarkerIcon.resizedMarkerOptions(new MarkerOptions().position(latLng).title(gauge.getGaugeName()),mMap.getCameraPosition().zoom);
+            Marker marker = mMap.addMarker(markerOptions);
             marker.setTag(gauge);
             markerList.add(marker);
         }
@@ -832,9 +841,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 GaugeApplication.myDBHelper.clearMarkers();
 
                 //add markers
+                Bitmap customHomeIcon = new CustomMapMarkerIcon(mContext).homeMarkerBitmap();
                 Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
                         position(myLatLng).icon(BitmapDescriptorFactory.
-                        fromBitmap(homeMarkerBitmap(mContext))).title("My Location"));
+                        fromBitmap(customHomeIcon)).title("My Location"));
                 myLocationMarker.setTag(null);
                 if(mZoom == zoomLevel[0]){
                     List<Gauge> mList = gaugeListArray[0];
@@ -874,7 +884,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         previousZoom = zoomLevel[0];
                         for (Marker marker : markerList) {
                             if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,60, 60)));
+                                CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                                Bitmap customIcon = customMapMarkerIcon.resizeMapIcons(60,60);
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(customIcon));
                             }
                         }
                         List<Gauge> mList = gaugeListArray[0];
@@ -885,7 +897,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         previousZoom = zoomLevel[1];
                         for (Marker marker : markerList) {
                             if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,60, 60)));
+                                CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                                Bitmap customIcon = customMapMarkerIcon.resizeMapIcons(60,60);
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(customIcon));
                             }
                         }
                         List<Gauge> mList = gaugeListArray[1];
@@ -896,7 +910,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         previousZoom = zoomLevel[2];
                         for (Marker marker : markerList) {
                             if ( marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,40, 40)));
+                                CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                                Bitmap customIcon = customMapMarkerIcon.resizeMapIcons(40,40);
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(customIcon));
                             }
                         }
                         List<Gauge> mList = gaugeListArray[2];
@@ -907,7 +923,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         previousZoom = zoomLevel[3];
                         for (Marker marker : markerList) {
                             if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,20, 20)));
+                                CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                                Bitmap customIcon = customMapMarkerIcon.resizeMapIcons(20,20);
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(customIcon));
                             }
                         }
                         List<Gauge> mList = gaugeListArray[3];
@@ -918,7 +936,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         previousZoom = zoomLevel[4];
                         for (Marker marker : markerList) {
                             if (marker != selectedMarker) {
-                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(mContext,20, 20)));
+                                CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                                Bitmap customIcon = customMapMarkerIcon.resizeMapIcons(20,20);
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(customIcon));
                             }
                         }
                         List<Gauge> mList = gaugeListArray[4];
@@ -972,7 +992,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                         marker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
 
                     }else {
-                        marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
+                        CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                        MarkerOptions markerOptions = customMapMarkerIcon.resizedMarkerOptions(new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom);
+                        marker = mMap.addMarker(markerOptions);
 
                     }
                     marker.setTag(gauge);
@@ -987,8 +1009,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     }
                 }else { //end selectedMarker added code
 
-
-                    Marker marker = mMap.addMarker(iconChangedOptions(mContext,new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom));
+                    CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
+                    MarkerOptions markerOptions = customMapMarkerIcon.resizedMarkerOptions(new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom);
+                    Marker marker = mMap.addMarker(markerOptions);
                     marker.setTag(gauge);
                     markerList.add(marker);
                     nMarkerList.add(marker);
@@ -1025,83 +1048,33 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
     /**
-     *
-     * @param context
-     * @param markerOptions
-     * @param zoom
-     * @return
+     * This method resets the selected marker. The selected marker gets removed from the map and
+     * redrawn as a standard marker. The selected marker's instance must be removed from the map
+     * and the list's that contain it, then re-added as new markers
+     * @param context Activity context
      */
-    private static MarkerOptions iconChangedOptions (Context context, MarkerOptions markerOptions, Float zoom){
-
-        if(zoom == zoomLevel[0]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,60, 60)));
-        }else if(zoom == zoomLevel [1]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,60, 60)));
-        }else if(zoom == zoomLevel[2]){
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,40, 40)));
-        }else{
-            markerOptions.icon(BitmapDescriptorFactory.fromBitmap(resizeMapIcons(context,20, 20)));
-        }
-        return markerOptions;
-    }
-
-
     private static void resetSelectedMarker(Context context){
 
+        Log.d("resetSelected","oldGauge " + String.valueOf((Gauge)selectedMarker.getTag()));
         Gauge oldGauge = (Gauge) selectedMarker.getTag();
         markerList.remove(selectedMarker);
         selectedMarker.remove();
         LatLng oldLatLng = new LatLng(oldGauge.getGaugeLatitude(),oldGauge.getGaugeLongitude());
-        Marker oldMarker = mMap.addMarker(iconChangedOptions(context,new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),previousZoom));
+        CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(context);
+        MarkerOptions markerOptions = customMapMarkerIcon.resizedMarkerOptions(new MarkerOptions().position(oldLatLng).title(oldGauge.getGaugeName()),previousZoom);
+        Marker oldMarker = mMap.addMarker(markerOptions);
         oldMarker.setTag(oldGauge);
         markerList.add(oldMarker);
 
     }
 
-    private static Bitmap resizeMapIcons(Context context,int width, int height){
 
-        Log.d("bitmap1","start");
-        //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
-
-        Drawable drawable = context.getResources().getDrawable(R.drawable.marker_circle);
-        if(drawable instanceof  BitmapDrawable){
-          //  Log.d("mapPosition7", "bitmap drawable");
-            return ((BitmapDrawable)drawable).getBitmap();
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0,0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-
-        //Log.d("mapPosition5", "bitmap value: " + String.valueOf(bitmap));
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, false);
-        Log.d("bitmap2","finish");
-        return resizedBitmap;
-    }
-
-    private static Bitmap homeMarkerBitmap(Context context){
-
-        Log.d("bitmap1","start");
-        //Log.d("mapPosition6", "drawable value: " + String.valueOf(getResources().getDrawable(R.drawable.marker_circle)));
-
-        Drawable drawable = context.getResources().getDrawable(R.drawable.marker_circle_home);
-        if(drawable instanceof  BitmapDrawable){
-            //  Log.d("mapPosition7", "bitmap drawable");
-            return ((BitmapDrawable)drawable).getBitmap();
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0,0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
-
-        //Log.d("mapPosition5", "bitmap value: " + String.valueOf(bitmap));
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, 60, 60, false);
-        Log.d("bitmap2","finish");
-        return resizedBitmap;
-    }
-
+    /**
+     * This method is called when a marker is clicked. If the marker clicked has a Gauge as a tag
+     * then it is set as the selected marker and the LoadGaugeFragment task is executed
+     * @param marker The marker that has been clicked
+     * @return True: handled by onClick, False: camera centers the marker (default behavior)
+     */
     @Override
     public boolean onMarkerClick(final Marker marker){
 
@@ -1109,27 +1082,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Gauge gauge = (Gauge)marker.getTag();
         searchView.clearFocus();
         if(gauge != null){
-            if(selectedMarker != null) {
-                if (!((Gauge) selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())) {
-                    Log.d("markerStuff7", "different Marker clicked");
-                    resetSelectedMarker(mContext);
-                } else {
-                    Log.d("markerStuff7", "same Marker clicked");
-                    //do nothing
-                }
-            }
-            markerList.remove(marker);
-            marker.remove();
-            LatLng latLng = new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude());
-            Marker nMarker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
-            nMarker.setTag(gauge);
-            selectedMarker = nMarker;
-            Log.d("markerStuff2",String.valueOf(selectedMarker));
-            Log.d("markerStuff3",((Gauge)selectedMarker.getTag()).getGaugeID());
-            markerList.add(nMarker);
-            Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
-            //loadGaugeTask = new LoadGauge();
-            //loadGaugeTask.execute(gauge);
+
+            moveCameraOnClick(mContext,marker);
+
             if(gaugeDataLayout.getVisibility() != View.VISIBLE){
                 gaugeDataLayout.setVisibility(View.VISIBLE);
             }
@@ -1145,7 +1100,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
             }
             fragmentTransaction.commit();
-            return false;
+            return true;
         }
         else{
             Log.d("markerClick","gauge clicked on home");
@@ -1155,32 +1110,37 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
-    private static class GetGaugesParams{
-        Context context;
-        List<Gauge> gauges;
-        private GetGaugesParams(Context context, List<Gauge> gauges){
-            this.context = context;
-            this.gauges = gauges;
-        }
 
-    }
+    /**
+     * AsyncTask that gets the initial gauges that surround the home location
+     */
 
-    private static class GetGauges extends AsyncTask<GetGaugesParams, Void, GetGaugesParams>{
+    private static class GetGauges extends AsyncTask<Context, Void, Context>{
+
+        /**
+         * On a background thread, gets a list of all gauges within a 20 mile radius of the
+         * home location
+         * @param params The activity context stored in the [0] of an array
+         * @return The activity context stored in params
+         */
         @Override
-        protected GetGaugesParams doInBackground(GetGaugesParams... params){
+        protected Context doInBackground(Context... params){
 
-            Context context = params[0].context;
+            Context context = params[0];
             Log.d("getGauges",String.valueOf(homeLocation));
             allGauges = getAllGauges();
             GetLocations getLocations = new GetLocations(homeLocation,allGauges);
-            return new GetGaugesParams(context,getLocations.getClosestGauges(250));
+            myGaugeList = getLocations.getClosestGauges(20);
+            return context;
         }
+
+        /**
+         * Loads the map fragment on the UI Thread
+         * @param context The activity context
+         */
         @Override
-        protected void onPostExecute(GetGaugesParams result){
+        protected void onPostExecute(Context context){
 
-
-            Context context = result.context;
-            myGaugeList = result.gauges;
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment)mFragmentManager.findFragmentById(R.id.map);
             mapFragment.getMapAsync((OnMapReadyCallback) context);
@@ -1188,26 +1148,34 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         }
 
+        /**
+         * This method uses a database helper to get all the gauges in the database
+         * @return A List of Gauges stored in the database
+         */
         private List<Gauge> getAllGauges(){
 
             return GaugeApplication.myDBHelper.getAllGauges();
         }
     }
 
-
-
-
-
-
-
-
-
+    /**
+     * Class that contains the objects used by MoveToLocation class
+     */
     private static class MoveLocationParams{
         Context context;
         String id;
         Gauge gauge;
         LinearLayout gaugeDataLayout;
         FragmentManager fragmentManager;
+
+        /**
+         * This method is used to create a new MoveLocationParams
+         * @param context Activity context
+         * @param id A String identifier used to find the gauge
+         * @param gauge A gauge object, can be set to null if there is no gauge object
+         * @param gaugeDataLayout A LinearLayout that is the container for LoadGaugeFragment
+         * @param fragmentManager A FragmentManager
+         */
         private MoveLocationParams(Context context, String id, Gauge gauge, LinearLayout gaugeDataLayout, FragmentManager fragmentManager){
             this.context = context;
             this.id = id;
@@ -1217,11 +1185,18 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
-
-
-
+    /**
+     * AsyncTask that moves the camera to the position of the gauge selected from the search
+     * suggestions.
+     */
     private static class MoveToLocation extends AsyncTask<MoveLocationParams,Void,MoveLocationParams>{
 
+        /**
+         * On a background thread, this method gets a gauge object from the database using a string
+         * identifier
+         * @param params A MoveLocationParams object
+         * @return A MoveLocationParams if gauge is found from the identifier, else null is returned
+         */
         @Override
         protected MoveLocationParams doInBackground(MoveLocationParams... params){
 
@@ -1236,6 +1211,11 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return null;
         }
 
+        /**
+         * On the UI thread, this method moves the camera to the location of the gauge and opens
+         * the LoadGaugeFragment
+         * @param moveLocationParams The moveLocationParams returned by doInBackground
+         */
         @Override
         protected void onPostExecute(MoveLocationParams moveLocationParams){
 
@@ -1249,8 +1229,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 markerList.clear();
                 selectedMarker = null;
                 GaugeApplication.myDBHelper.clearMarkers();
+                Bitmap customIcon = new CustomMapMarkerIcon(moveLocationParams.context).homeMarkerBitmap();
                 Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                        position(myLatLng).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(moveLocationParams.context))).title("My Location"));
+                        position(myLatLng).icon(BitmapDescriptorFactory.fromBitmap(customIcon)).title("My Location"));
                 myLocationMarker.setTag(null);
 
                 Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude())).title(gauge.getGaugeName()));
@@ -1283,22 +1264,37 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
     }
 
+    /**
+     * Class that contains the objects needed for UpdateDataBaseTask
+     */
     private static class UpdateDBParams{
         Context context;
         boolean dbEmpty;
+
+        /**
+         * Creates new UpdateDBParams
+         * @param context Activity context
+         * @param dbEmpty Boolean that is true if there are no entries in the Gauges Table, False
+         *                if there are values in the Gauges Table
+         */
         private UpdateDBParams(Context context, boolean dbEmpty){
             this.context = context;
             this.dbEmpty = dbEmpty;
         }
     }
 
-    //Makes sure the DB data is up to date with the latest source XML data from MY_URL
+    /**
+     * AsyncTask that makes sure the Database is up to date with the latest source XML data.
+     * Receives an UpdateDBParams object to pass to onPostExecute
+     */
     private static class UpdateDataBaseTask extends AsyncTask<UpdateDBParams,Void,UpdateDBParams>{
 
-        /*
-         *checks if the DB data version and the source XML data version match
-         *if versions match, continue without updating DB
-         *if versions don't match, download the data from source and update the DB
+        /**
+         * This method runs on a background thread. Checks if the DB data version and the source
+         * XML data version match. Update the DB if the versions don't match
+         * @param params an UpdateDBParams that contains the activity Context
+         * @return an UpdateDBParams that contains the activity Context and a boolean. Boolean is
+         * true if the database is empty.
          */
         @Override
         protected UpdateDBParams doInBackground(UpdateDBParams...params){
@@ -1337,6 +1333,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return new UpdateDBParams(context,dbEmpty);
         }
 
+        /**
+         * Method that runs after doInBackground is completed. Sets the home location, initial map
+         * zoom level, displays an error message if database is empty, and finally starts the
+         * GetGauges AsyncTask
+         * @param result An UpdateDBParams that contains the activity context and result of doInBackground
+         */
         @Override
         protected void onPostExecute(UpdateDBParams result){
 
@@ -1367,9 +1369,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 toast.show();
             }
 
-            GetGaugesParams params = new GetGaugesParams(context,null);
+
             GetGauges task = new GetGauges();
-            task.execute(params);
+            task.execute(context);
         }
 
         /**
@@ -1623,7 +1625,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     /**
      * Checks if location permission is enabled, then gets the last known location
      * Updates the static Location homeLocation with new last known location
-     * @param context Activty Context
+     * @param context the activity Context
      * @param mFusedLocationClient FusedLocationProviderClient used to get the location
      */
     public static void getLastKnownLocation(Context context, FusedLocationProviderClient mFusedLocationClient){
@@ -1648,21 +1650,55 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      * Moves the map camera to a new position
      * Clears all the markers from the map and from storage
      * Adds the user's location to the map
+     * @param context The activity context
      * @param homeLatLngPos The lat long coordinates of user's location
      * @param targetLatLngPos The lat long coordinates of where the camera will move to
      * @param zoom Floating point that represents the zoom level of the camera
      */
-
     private static void moveCamera(Context context, LatLng homeLatLngPos, LatLng targetLatLngPos, float zoom){
 
         mMap.clear();
         markerList.clear();
         selectedMarker = null;
         GaugeApplication.myDBHelper.clearMarkers();
+        Bitmap customHomeIcon = new CustomMapMarkerIcon(context).homeMarkerBitmap();
         Marker myLocationMarker = mMap.addMarker(new MarkerOptions().
-                position(homeLatLngPos).icon(BitmapDescriptorFactory.fromBitmap(homeMarkerBitmap(context))).title("My Location"));
+                position(homeLatLngPos).icon(BitmapDescriptorFactory.fromBitmap(customHomeIcon)).title("My Location"));
         myLocationMarker.setTag(null);
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(targetLatLngPos, zoom));
+    }
+
+
+    /**
+     * Moves the map camera to the position of the clicked marker
+     * @param context The activity context
+     * @param marker The marker that was clicked
+     */
+
+    private static void moveCameraOnClick(Context context, Marker marker){
+
+        Gauge gauge = (Gauge)marker.getTag();
+        if(selectedMarker != null) {
+            if (!((Gauge) selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())) {
+                Log.d("markerStuff7", "different Marker clicked");
+                resetSelectedMarker(context);
+            } else {
+                Log.d("markerStuff7", "same Marker clicked");
+                //do nothing
+            }
+        }
+        markerList.remove(marker);
+        marker.remove();
+        LatLng latLng = new LatLng(gauge.getGaugeLatitude(),gauge.getGaugeLongitude());
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CLOSE_ZOOM));
+        Marker nMarker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
+        nMarker.setTag(gauge);
+        selectedMarker = nMarker;
+        selectedMarker.setTag(gauge);
+        Log.d("markerStuff2",String.valueOf(selectedMarker));
+        Log.d("markerStuff3",((Gauge)selectedMarker.getTag()).getGaugeID());
+        markerList.add(nMarker);
+        Log.d("markerClick","gauge clicked on: " + gauge.getGaugeName() + " " + gauge.getGaugeID() + " " + gauge.getGaugeURL());
 
 
     }
@@ -1688,10 +1724,4 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         }
 
     }
-
-
-
-
-
-
 }
