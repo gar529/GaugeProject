@@ -85,6 +85,7 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -251,7 +252,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_fragment);
-        Log.d("Timer","Finish");
+        Log.d("intent","Finish");
 
         mContext = this;
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(MainFragActivity.this);
@@ -262,6 +263,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 Log.d("getLocationUpdate5","in onLocationResult");
+
                 if (locationResult == null) {
                     Log.d("getLocationUpdate3","location result is null");
                     return;
@@ -462,6 +464,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      */
     private static void startLocationUpdates(Context context, FusedLocationProviderClient mFusedLocationClient) {
 
+
         Log.d("getLocationUpdate","startLocation");
         if(ContextCompat.checkSelfPermission((Activity)context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest,
@@ -469,6 +472,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     null /* Looper */);
             Log.d("getLocationUpdate2","getting location");
         }
+
+        WaitInBackground task = new WaitInBackground();
+        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,mFusedLocationClient);
     }
 
     /**
@@ -477,6 +483,18 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      */
     private static void stopLocationUpdates(FusedLocationProviderClient mFusedLocationClient) {
         Log.d("getLocationUpdate6","location updates stopped");
+        if(mFusedLocationClient != null){
+            try{
+                final Task<Void> task = mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+                if(task.isSuccessful()){
+                    Log.d("getLocationUpdate6","location updates stopped successfully");
+                }else{
+                    Log.d("getLocationUpdate6","Location updates stopped unsuccessful " + task.toString());
+                }
+            }catch (SecurityException e){
+                Log.d("getLocationUpdate6", "security exception");
+            }
+        }
         mFusedLocationClient.removeLocationUpdates(mLocationCallback);
     }
 
@@ -557,7 +575,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         FragmentFavorites fragmentFavorites = new FragmentFavorites();
         fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
-        fragmentTransaction.commit();
+        fragmentTransaction.commitAllowingStateLoss();
     }
 
 
@@ -732,6 +750,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng,mapZoomLevel));
         searchView.clearFocus();
+
     }
 
     /**
@@ -1723,5 +1742,38 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
         }
 
+    }
+
+    /**
+     * AsyncTask to wait 5 seconds on a background. Make sure to run in parallel to other background
+     * tasks by using executeOnExecutor() instead of execute()
+     */
+    private static class WaitInBackground extends AsyncTask<FusedLocationProviderClient,Void,FusedLocationProviderClient>{
+
+        /**
+         * Runs a while loop to wait 2500 milliseconds
+         * @param params FusedLocationProviderClient located in the params[0] position
+         * @return FusedLocationProviderClient that is passed to onPostExecute
+         */
+        @Override
+        protected FusedLocationProviderClient doInBackground(FusedLocationProviderClient...params){
+
+            long time = System.currentTimeMillis();
+            long futureTime = time + 2500;
+            while(time < futureTime){
+                time = System.currentTimeMillis();
+            }
+
+            return params[0];
+        }
+
+        /**
+         * runs stopLocationUpdates() on the UI Thread
+         * @param result FusedLocationProviderClient used as a parameter for stopLocationUpdates()
+         */
+        @Override
+        protected void onPostExecute(FusedLocationProviderClient result){
+            stopLocationUpdates(result);
+        }
     }
 }

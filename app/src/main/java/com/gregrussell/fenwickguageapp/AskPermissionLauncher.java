@@ -83,6 +83,10 @@ public class AskPermissionLauncher extends Activity {
             }
         }
 
+        Intent intent = new Intent(this,MainFragActivity.class);
+        startActivity(intent);
+        finish();
+
 
 
 

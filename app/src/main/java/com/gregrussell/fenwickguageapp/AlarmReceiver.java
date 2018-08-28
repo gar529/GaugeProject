@@ -28,6 +28,7 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
 import java.text.DateFormat;
@@ -113,19 +114,18 @@ public class AlarmReceiver extends BroadcastReceiver {
                 }
             };
         };
-        startLocationUpdates(mContext,mFusedLocationClient, mLocationRequest,mLocationCallback);
+        startLocationUpdates(mFusedLocationClient, mLocationRequest,mLocationCallback);
 
 
     }
 
     /**
-     * Checks if location updates are permitted, then requests location updates in the interval
-     * defined by mLocationRequest
-     * @param context Activity context
+     *
      * @param mFusedLocationClient FusedLocationProviderClient used to initiate location requests
+     * @param mLocationRequest LocationRequest used to initiate location requests
+     * @param mLocationCallback LocationCallback used to initiate location requests
      */
-    private static void startLocationUpdates(Context context,
-                                             FusedLocationProviderClient mFusedLocationClient,
+    private static void startLocationUpdates(                                             FusedLocationProviderClient mFusedLocationClient,
                                              LocationRequest mLocationRequest,
                                              LocationCallback mLocationCallback) {
 
@@ -136,6 +136,12 @@ public class AlarmReceiver extends BroadcastReceiver {
                     null /* Looper */);
             Log.i("getLocationUpdate2","getting location");
         }
+
+        WaitInBackground task = new WaitInBackground();
+        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, mFusedLocationClient);
+
+
+
     }
 
     /**
@@ -143,7 +149,18 @@ public class AlarmReceiver extends BroadcastReceiver {
      * @param mFusedLocationClient FusedLocationProviderClient initiates stoppage of location updates
      */
     private static void stopLocationUpdates(FusedLocationProviderClient mFusedLocationClient) {
-        Log.i("getLocationUpdate6","location updates stopped");
+        if(mFusedLocationClient != null){
+            try{
+                final Task<Void> task = mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+                if(task.isSuccessful()){
+                    Log.d("getLocationUpdate6","location updates stopped successfully");
+                }else{
+                    Log.d("getLocationUpdate6","Location updates stopped unsuccessful " + task.toString());
+                }
+            }catch (SecurityException e){
+                Log.d("getLocationUpdate6", "security exception");
+            }
+        }
         mFusedLocationClient.removeLocationUpdates(mLocationCallback);
     }
 
@@ -211,6 +228,10 @@ public class AlarmReceiver extends BroadcastReceiver {
             Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             CharSequence title = mContext.getResources().getString(R.string.flood_warning);
             CharSequence text = mContext.getResources().getString(R.string.multi_flood_warning);
+            Intent intent = new Intent(mContext, MainFragActivity.class);
+            intent.putExtra("notification","notification");
+            PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
             NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, GaugeApplication.CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(text)
@@ -219,6 +240,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setAutoCancel(true)
                     .setSound(soundUri)
+                    .setContentIntent(pendingIntent)
                     .setVibrate(new long[]{1000, 1000, 1000});
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
             notificationManager.notify(0, mBuilder.build());
@@ -276,34 +298,6 @@ public class AlarmReceiver extends BroadcastReceiver {
 
 
         }
-
-        /*private List<FloodedGauge> floodedGauges(List<GaugeReadParseObject> list, List<Gauge> faveGaugeList){
-
-            List<FloodedGauge> floodList = new ArrayList<FloodedGauge>();
-
-            Log.d("floodedGauge","grpo list size:" + list.size() + " |  fave list size" + faveGaugeList.size());
-            for(int i =0; i< list.size();i++){
-
-                String primary = "";
-                if(list.get(i).getDatumList() != null) {
-                    if (list.get(i).getDatumList().size() > 0) {
-                        primary = list.get(i).getDatumList().get(0).getPrimary();
-                    }
-                }
-                int floodWarning = getFloodWarning(list.get(i).getSigstages(),primary);
-                if(floodWarning > 0){
-
-                   FloodedGauge floodedGauge = new FloodedGauge(faveGaugeList.get(i).getGaugeName(),
-                           list.get(i).getDatumList().get(0).getPrimary() + units,convertToDate(list.get(i).getDatumList().get(0).getValid()),
-                           floodWarning);
-                   floodList.add(floodedGauge);
-
-                }
-
-            }
-            return floodList;
-
-        }*/
 
         private List<FloodedGauge> floodedGauges(List<RSSParsedObj> list, List<Gauge> faveGaugeList){
 
@@ -544,6 +538,39 @@ public class AlarmReceiver extends BroadcastReceiver {
             this.stage = stage;
             this.time = time;
             this.status = status;
+        }
+    }
+
+    /**
+     * AsyncTask to wait 5 seconds on a background. Make sure to run in parallel to other background
+     * tasks by using executeOnExecutor() instead of execute()
+     */
+    private static class WaitInBackground extends AsyncTask<FusedLocationProviderClient,Void,FusedLocationProviderClient>{
+
+        /**
+         * Runs a while loop to wait 2500 seconds
+         * @param params FusedLocationProviderClient located in the params[0] position
+         * @return FusedLocationProviderClient that is passed to onPostExecute
+         */
+        @Override
+        protected FusedLocationProviderClient doInBackground(FusedLocationProviderClient...params){
+
+            long time = System.currentTimeMillis();
+            long futureTime = time + 2500;
+            while(time < futureTime){
+                time = System.currentTimeMillis();
+            }
+
+            return params[0];
+        }
+
+        /**
+         * runs stopLocationUpdates() on the UI Thread
+         * @param result FusedLocationProviderClient used as a parameter for stopLocationUpdates()
+         */
+        @Override
+        protected void onPostExecute(FusedLocationProviderClient result){
+            stopLocationUpdates(result);
         }
     }
 
