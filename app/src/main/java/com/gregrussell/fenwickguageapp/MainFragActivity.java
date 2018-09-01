@@ -1612,7 +1612,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      */
     private static void updateLocation(Context context, final FusedLocationProviderClient mFusedLocationProviderClient) {
 
-        mLocationCallback = new LocationCallback() {
+        /*mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 Log.d("getLocationUpdateAsync5","in onLocationResult");
@@ -1635,10 +1635,21 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         startLocationUpdates(context,mFusedLocationProviderClient);
         getLastKnownLocation(context,mFusedLocationProviderClient);
+
         Location location = homeLocation;
         myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
         LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-        moveCamera(context,latLng,latLng,CLOSEST_ZOOM);
+        moveCamera(context,latLng,latLng,CLOSEST_ZOOM);*/
+
+        LocationUpdate locationUpdate = new LocationUpdate(context);
+        Location location = locationUpdate.getLocation();
+        if (location != null){
+            homeLocation = location;
+        }
+        Log.d("LocationUpdates78","location is: " + String.valueOf(location));
+        myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
+        moveCamera(context,myLatLng,myLatLng,CLOSE_ZOOM);
+
     }
 
     /**
