@@ -107,7 +107,7 @@ import java.util.Random;
 import java.util.TimeZone;
 
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
-        SearchView.OnQueryTextListener, LoaderManager.LoaderCallbacks<Cursor>{
+        SearchView.OnQueryTextListener, LoaderManager.LoaderCallbacks<Cursor>, LocCallback{
 
     private static GoogleMap mMap;
     private static List<Gauge> myGaugeList;
@@ -132,7 +132,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static LocationRequest mLocationRequest;
     private static LocationCallback mLocationCallback;
     private static Location updatedLocation;
-
+    private static LocCallback locCallback;
     public static final String WIFI = "Wi-fi";
     public static final String ANY = "Any";
     private static final String MY_URL = "https://raw.githubusercontent.com/gar529/GaugeProject/master/GaugeProject/xmlData.xml";
@@ -140,7 +140,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public static String sPref = null;
     private static boolean wifiConnected = true; // Whether there is a Wi-Fi connection.
     private static boolean mobileConnected = false; // Whether there is a mobile connection.
-
+    private static RelativeLayout titleScreen;
 
     private static final int CLOSEST_ZOOM = 12;
     private static final int CLOSE_ZOOM = 11;
@@ -149,6 +149,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static final int FARTHEST_ZOOM = 5;
 
 
+    @Override
+    public void callback(Location location){
+        homeLocation = location;
+    }
 
     @Override
     public void onBackPressed(){
@@ -195,6 +199,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             } else {
                 Log.d("backpressed5,",String.valueOf(selectedMarker));
                 super.onBackPressed();
+
+
             }
         }else{
             if(selectedMarker !=null) {
@@ -255,34 +261,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("intent","Finish");
 
         mContext = this;
+        locCallback = this;
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(MainFragActivity.this);
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(5000);
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                Log.d("getLocationUpdate5","in onLocationResult");
+        LocationUpdate locationUpdate = new LocationUpdate(mContext, locCallback);
+        locationUpdate.getLocation();
+        homeLocation = getLastKnownLocation(this,mFusedLocationClient);
 
-                if (locationResult == null) {
-                    Log.d("getLocationUpdate3","location result is null");
-                    return;
-                }else{
-                    Log.d("getLocationUpdate4","location result is not null");
-                }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-                    Log.d("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                    if(location!=null) {
-                        Log.d("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                        homeLocation = location;
-                        stopLocationUpdates(mFusedLocationClient);
-                    }
-                }
-            };
-        };
-        startLocationUpdates(mContext,mFusedLocationClient);
         LinearLayout mainLayout = (LinearLayout)findViewById(R.id.main_layout);
         mainLayout.requestFocus();
         String s = getIntent().getStringExtra("notification");
@@ -304,6 +288,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         invisibleLayout = (RelativeLayout) findViewById(R.id.invisible_layout);
         invisibleLayout.setVisibility(View.GONE);
         gaugeDataLayout = (LinearLayout) findViewById(R.id.gauge_data_layout);
+
+        // Title screen that shows while the map loads
+        titleScreen = (RelativeLayout)findViewById(R.id.titleScreen);
+        titleScreen.setVisibility(View.VISIBLE);
 
         // Get the SearchView and set the searchable configuration
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
@@ -416,7 +404,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         mFragmentManager = getSupportFragmentManager();
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        getMyLocation(mContext,mFusedLocationClient);
+        UpdateDBParams updateDBParams = new UpdateDBParams(this, false);
+        UpdateDataBaseTask task = new UpdateDataBaseTask();
+        task.execute(updateDBParams);
 
 
     }
@@ -432,71 +422,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
 
-    /**
-     * This method uses the location permission to obtain the device's last known location and start
-     * the UpdateDataBaseTask class.
-     * @param context The activity context
-     * @param providerClient A FusedLocationProviderClient used as a parameter for getLastKnownLocation()
-     */
-
-    private static void getMyLocation(Context context,FusedLocationProviderClient providerClient){
 
 
-        boolean b = false;
-        UpdateDBParams updateDBParams = new UpdateDBParams(context, b);
-        if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            UpdateDataBaseTask task = new UpdateDataBaseTask();
-            task.execute(updateDBParams);
-        }else {
-            Log.d("locations9", "permission granted");
 
-            getLastKnownLocation(context,providerClient);
-            UpdateDataBaseTask task = new UpdateDataBaseTask();
-            task.execute(updateDBParams);
-        }
-    }
-
-    /**
-     * Checks if location updates are permitted, then requests location updates in the interval
-     * defined by mLocationRequest
-     * @param context Activity context
-     * @param mFusedLocationClient FusedLocationProviderClient used to initiate location requests
-     */
-    private static void startLocationUpdates(Context context, FusedLocationProviderClient mFusedLocationClient) {
-
-
-        Log.d("getLocationUpdate","startLocation");
-        if(ContextCompat.checkSelfPermission((Activity)context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                    mLocationCallback,
-                    null /* Looper */);
-            Log.d("getLocationUpdate2","getting location");
-        }
-
-        WaitInBackground task = new WaitInBackground();
-        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,mFusedLocationClient);
-    }
-
-    /**
-     * Stops the receiving of location updates
-     * @param mFusedLocationClient FusedLocationProviderClient initiates stoppage of location updates
-     */
-    private static void stopLocationUpdates(FusedLocationProviderClient mFusedLocationClient) {
-        Log.d("getLocationUpdate6","location updates stopped");
-        if(mFusedLocationClient != null){
-            try{
-                final Task<Void> task = mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-                if(task.isSuccessful()){
-                    Log.d("getLocationUpdate6","location updates stopped successfully");
-                }else{
-                    Log.d("getLocationUpdate6","Location updates stopped unsuccessful " + task.toString());
-                }
-            }catch (SecurityException e){
-                Log.d("getLocationUpdate6", "security exception");
-            }
-        }
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-    }
 
     /**
      * Method used to check status of the internet connection
@@ -618,7 +546,11 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 toast.show();
             }
 
-            }
+        }else{
+            CharSequence text = "No results for " + query;
+            Toast toast = Toast.makeText(mContext,text,Toast.LENGTH_SHORT);
+            toast.show();
+        }
     }
 
 
@@ -744,6 +676,14 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Log.d("mapPosition2", "camera position: " + String.valueOf(mMap.getCameraPosition()));
                 Log.d("mapPosition8", "myList size: " + myGaugeList.size());
                 markerLoader();
+
+            }
+        });
+
+        mMap.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
+            @Override
+            public void onMapLoaded() {
+                titleScreen.setVisibility(View.GONE);
 
             }
         });
@@ -1641,9 +1581,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
         moveCamera(context,latLng,latLng,CLOSEST_ZOOM);*/
 
-        LocationUpdate locationUpdate = new LocationUpdate(context);
+        LocationUpdate locationUpdate = new LocationUpdate(context,locCallback);
         Location location = locationUpdate.getLocation();
-        if (location != null){
+        if (location != null && location.getTime() > homeLocation.getTime()){
             homeLocation = location;
         }
         Log.d("LocationUpdates78","location is: " + String.valueOf(location));
@@ -1658,7 +1598,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      * @param context the activity Context
      * @param mFusedLocationClient FusedLocationProviderClient used to get the location
      */
-    public static void getLastKnownLocation(Context context, FusedLocationProviderClient mFusedLocationClient){
+    public static Location getLastKnownLocation(Context context, FusedLocationProviderClient mFusedLocationClient){
 
         //run the code if location permission is enabled
         if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -1674,6 +1614,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 }
             });
         }
+        return homeLocation;
     }
 
     /**
@@ -1755,36 +1696,4 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
-    /**
-     * AsyncTask to wait 5 seconds on a background. Make sure to run in parallel to other background
-     * tasks by using executeOnExecutor() instead of execute()
-     */
-    private static class WaitInBackground extends AsyncTask<FusedLocationProviderClient,Void,FusedLocationProviderClient>{
-
-        /**
-         * Runs a while loop to wait 2500 milliseconds
-         * @param params FusedLocationProviderClient located in the params[0] position
-         * @return FusedLocationProviderClient that is passed to onPostExecute
-         */
-        @Override
-        protected FusedLocationProviderClient doInBackground(FusedLocationProviderClient...params){
-
-            long time = System.currentTimeMillis();
-            long futureTime = time + 2500;
-            while(time < futureTime){
-                time = System.currentTimeMillis();
-            }
-
-            return params[0];
-        }
-
-        /**
-         * runs stopLocationUpdates() on the UI Thread
-         * @param result FusedLocationProviderClient used as a parameter for stopLocationUpdates()
-         */
-        @Override
-        protected void onPostExecute(FusedLocationProviderClient result){
-            stopLocationUpdates(result);
-        }
-    }
 }

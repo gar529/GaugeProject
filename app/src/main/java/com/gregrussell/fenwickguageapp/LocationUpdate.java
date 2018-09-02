@@ -25,11 +25,13 @@ public class LocationUpdate{
     private static LocationRequest locationRequest;
     private static Location mLastLocation;
     private static Location mLocation;
+    LocCallback locCallback;
 
 
-    public LocationUpdate(Context mContext){
+    public LocationUpdate(Context mContext, final LocCallback locCallback){
 
         this.mContext = mContext;
+        this.locCallback = locCallback;
         locationClient = LocationServices.getFusedLocationProviderClient(mContext);
         locationRequest = new LocationRequest();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
@@ -50,6 +52,7 @@ public class LocationUpdate{
 
                     Log.d("getLocationUpdateAsync",location.getLatitude() + ", " + location.getLongitude());
                     mLocation = location;
+                    locCallback.callback(mLocation);
                     stopLocationUpdates(locationClient);
                 }
             }
@@ -170,3 +173,4 @@ public class LocationUpdate{
         return mLastLocation;
     }
 }
+

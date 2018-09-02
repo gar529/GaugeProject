@@ -6,157 +6,173 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
-        android:id="@+id/main_layout"
-        android:layout_height="match_parent"
-        android:layout_width="match_parent"
-        android:orientation="vertical">
 
 
-
-
-
-        <FrameLayout
+        <LinearLayout
+            android:id="@+id/main_layout"
+            android:layout_height="match_parent"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="5">
+            android:orientation="vertical">
+
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="5">
 
 
 
-                <RelativeLayout
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:id="@+id/map_container">
-
-
-                    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
-                        xmlns:map="http://schemas.android.com/apk/res-auto"
-                        xmlns:tools="http://schemas.android.com/tools"
-                        android:id="@+id/map"
-                        android:name="com.google.android.gms.maps.SupportMapFragment"
+                    <RelativeLayout
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        tools:context=".MapsActivity" />
+                        android:id="@+id/map_container">
+
+
+                        <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+                            xmlns:map="http://schemas.android.com/apk/res-auto"
+                            xmlns:tools="http://schemas.android.com/tools"
+                            android:id="@+id/map"
+                            android:name="com.google.android.gms.maps.SupportMapFragment"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            tools:context=".MapsActivity" />
+                    </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/colorInvisible"
+                    android:id="@+id/invisible_layout"
+                    android:clickable="true"
+                    android:focusable="true"
+
+                    >
+
+                    <ProgressBar
+                        android:layout_centerInParent="true"
+                        android:id="@+id/map_progress_bar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:indeterminate="true"/>
+
                 </RelativeLayout>
 
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@color/colorInvisible"
-                android:id="@+id/invisible_layout"
-                android:clickable="true"
-                android:focusable="true"
 
-                >
-
-                <ProgressBar
-                    android:layout_centerInParent="true"
-                    android:id="@+id/map_progress_bar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:indeterminate="true"/>
-
-            </RelativeLayout>
-
-
-
-            <LinearLayout
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="5dp"
-                android:paddingTop="5dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_margin="10dp">
-
-
-                <SearchView
-
-                    android:id="@+id/map_search_bar"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/map_search_layout_background"
-                    />
-
-
-                <ListView
-                    android:layout_marginTop="5dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/map_search_layout_background"
-                    android:id="@+id/search_suggestions"/>
-
-                <!--<EditText
-                    android:layout_gravity="center_vertical"
-                    android:singleLine="true"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/map_search_edit_text"/>-->
-
-
-
-
-            </LinearLayout>
-
-
-
-            <LinearLayout
-
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="bottom"
-                android:gravity="bottom|end">
-            <android.support.design.widget.FloatingActionButton
-               android:layout_marginEnd="20dp"
-                android:layout_marginBottom="20dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto"
-                android:id="@+id/floating_button_map_location"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:elevation="5dp"
-                app:borderWidth="0dp"
-                android:src="@drawable/baseline_gps_fixed_black"
-                app:rippleColor="@android:color/darker_gray"
-                app:backgroundTint="@android:color/background_light"
-                android:layout_gravity="bottom|end"
-                android:clickable="true" />
-            <android.support.design.widget.FloatingActionButton
-                android:layout_marginEnd="20dp"
-                android:layout_marginBottom="20dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto"
-                android:id="@+id/floating_button_map_favorites"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:elevation="5dp"
-                app:borderWidth="0dp"
-                android:src="@drawable/btn_rating_star_on_normal_holo_dark_crop"
-                app:rippleColor="@android:color/darker_gray"
-                app:backgroundTint="@android:color/background_light"
-                android:layout_gravity="bottom|end"
-                android:clickable="true" />
 
                 <LinearLayout
-                    android:padding="10dp"
-                    android:id="@+id/gauge_data_layout"
-                    android:visibility="gone"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="5dp"
+                    android:paddingTop="5dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:background="@color/load_gauge_frag_background_dark"
-                    android:clickable="true">
+                    android:layout_margin="10dp">
+
+
+                    <SearchView
+
+                        android:id="@+id/map_search_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/map_search_layout_background"
+                        />
+
+
+                    <ListView
+                        android:layout_marginTop="5dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/map_search_layout_background"
+                        android:id="@+id/search_suggestions"/>
+
+                    <!--<EditText
+                        android:layout_gravity="center_vertical"
+                        android:singleLine="true"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/map_search_edit_text"/>-->
+
+
+
+
                 </LinearLayout>
 
 
-            </LinearLayout>
+
+                <LinearLayout
+
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_gravity="bottom"
+                    android:gravity="bottom|end">
+                <android.support.design.widget.FloatingActionButton
+                   android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="20dp"
+                    xmlns:app="http://schemas.android.com/apk/res-auto"
+                    android:id="@+id/floating_button_map_location"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:elevation="5dp"
+                    app:borderWidth="0dp"
+                    android:src="@drawable/baseline_gps_fixed_black"
+                    app:rippleColor="@android:color/darker_gray"
+                    app:backgroundTint="@android:color/background_light"
+                    android:layout_gravity="bottom|end"
+                    android:clickable="true" />
+                <android.support.design.widget.FloatingActionButton
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="20dp"
+                    xmlns:app="http://schemas.android.com/apk/res-auto"
+                    android:id="@+id/floating_button_map_favorites"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:elevation="5dp"
+                    app:borderWidth="0dp"
+                    android:src="@drawable/btn_rating_star_on_normal_holo_dark_crop"
+                    app:rippleColor="@android:color/darker_gray"
+                    app:backgroundTint="@android:color/background_light"
+                    android:layout_gravity="bottom|end"
+                    android:clickable="true" />
+
+                    <LinearLayout
+                        android:padding="10dp"
+                        android:id="@+id/gauge_data_layout"
+                        android:visibility="gone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@color/load_gauge_frag_background_dark"
+                        android:clickable="true">
+                    </LinearLayout>
 
 
-        </FrameLayout>
+                </LinearLayout>
+
+                <RelativeLayout
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/color_light_list_item"
+                    android:id="@+id/titleScreen">
+
+                    <TextView
+                        android:layout_centerInParent="true"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"/>
+                </RelativeLayout>
 
 
-</LinearLayout>
+            </FrameLayout>
+
+
+        </LinearLayout>
+
+
 </android.support.design.widget.CoordinatorLayout>

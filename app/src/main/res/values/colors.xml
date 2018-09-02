@@ -4,8 +4,8 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="colorInvisible">#00000000</color>
-    <color name="color_light_list_item">#EEEEEEEE</color>
-    <color name="color_dark_list_item">#DDDDDDDD</color>
+    <color name="color_light_list_item">#FFEEEEEE</color>
+    <color name="color_dark_list_item">#FFDDDDDD</color>
     <color name="load_gauge_frag_background_light">#BBFFFFFF</color>
     <color name="load_gauge_frag_background_dark">#88000000</color>
     <color name="light_text">#FFFFFFFF</color>
