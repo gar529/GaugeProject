@@ -75,7 +75,13 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         pendingResult = goAsync();
-        updateLocation();
+        LocationUpdate locationUpdate = new LocationUpdate(context, new LocCallback() {
+            @Override
+            public void callback(Location location) {
+
+            }
+        });
+        locationUpdate.getLocation();
         BackgroundTask task = new BackgroundTask();
         task.execute();
 

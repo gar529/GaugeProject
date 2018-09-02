@@ -2,6 +2,7 @@ package com.gregrussell.fenwickguageapp;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.Fragment;
 import android.app.LoaderManager;
@@ -680,10 +681,12 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
 
+
         mMap.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
             @Override
             public void onMapLoaded() {
                 titleScreen.setVisibility(View.GONE);
+
 
             }
         });
@@ -709,6 +712,30 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
     /**
+     * This method receives a zoom float and converts it into a zoom level
+     * @param zoom The camera zoom float
+     * @return A float that represents the zoom level
+     */
+    private Float convertZoom(Float zoom){
+
+
+        if(zoom > zoomLevel[0]){
+            return zoomLevel[0];
+        }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
+            return zoomLevel[1];
+        }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
+            return zoomLevel[2];
+        }else if(zoom >= zoomLevel[3] && zoom <= zoomLevel[2]){
+            return zoomLevel[3];
+        }
+        else{
+            return zoomLevel[4];
+        }
+
+    }
+
+
+    /**
      * Loads markers based on camera position and zoom level
      */
     private void markerLoader(){
@@ -722,19 +749,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("markerStuff9","what's the distance" + previousLocation.distanceTo(myLocation) * MILE_CONVERTER);
 
         //get the zoom of the camera and assign a zoom level based on it
-        Float mZoom;
-        if(zoom > zoomLevel[0]){
-            mZoom = zoomLevel[0];
-        }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
-            mZoom = zoomLevel[1];
-        }else if(zoom > zoomLevel[2] && zoom <= zoomLevel[1]){
-            mZoom = zoomLevel[2];
-        }else if(zoom >= zoomLevel[3] && zoom <= zoomLevel[2]){
-            mZoom = zoomLevel[3];
-        }
-        else{
-            mZoom = zoomLevel[4];
-        }
+        Float mZoom = convertZoom(zoom);
 
         //if the camera has moved 5 miles, display a group of markers based on the zoom level
         //Get the groupings of markers and put them in an array
