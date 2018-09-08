@@ -72,7 +72,7 @@ public class LocationUpdate{
 
 
         Log.d("getLocationUpdate","startLocation");
-        if(ContextCompat.checkSelfPermission((Activity)context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mFusedLocationClient.requestLocationUpdates(locationRequest,
                     locationCallback,
                     null /* Looper */);
@@ -111,6 +111,12 @@ public class LocationUpdate{
         startLocationUpdates(mContext,locationClient);
 
         return getLastKnownLocation(mContext,locationClient);
+
+    }
+
+    public void getCurrentLocation(){
+
+        startLocationUpdates(mContext,locationClient);
 
     }
 

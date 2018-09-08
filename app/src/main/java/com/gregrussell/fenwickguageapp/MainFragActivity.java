@@ -2,32 +2,17 @@ package com.gregrussell.fenwickguageapp;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.ActivityManager;
-import android.app.AlarmManager;
-import android.app.Fragment;
 import android.app.LoaderManager;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.SearchManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.CursorLoader;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
-import android.database.SQLException;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Point;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LevelListDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -35,77 +20,45 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
-import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.app.AppCompatDelegate;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Display;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.SearchView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.Switch;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.GoogleMapOptions;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
-
-import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
-import java.util.TimeZone;
 
 public class MainFragActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
         SearchView.OnQueryTextListener, LoaderManager.LoaderCallbacks<Cursor>, LocCallback{
@@ -129,10 +82,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static Marker selectedMarker;
     private ListView searchSuggestions;
     private String mCurFilter;
-    private FusedLocationProviderClient mFusedLocationClient;
-    private static LocationRequest mLocationRequest;
-    private static LocationCallback mLocationCallback;
-    private static Location updatedLocation;
     private static LocCallback locCallback;
     public static final String WIFI = "Wi-fi";
     public static final String ANY = "Any";
@@ -141,8 +90,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public static String sPref = null;
     private static boolean wifiConnected = true; // Whether there is a Wi-Fi connection.
     private static boolean mobileConnected = false; // Whether there is a mobile connection.
-    private static RelativeLayout titleScreen;
-
+    private RelativeLayout titleScreen;
     private static final int CLOSEST_ZOOM = 12;
     private static final int CLOSE_ZOOM = 11;
     private static final int MIDDLE_ZOOM = 10;
@@ -150,6 +98,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     private static final int FARTHEST_ZOOM = 5;
 
 
+    /**
+     * UpdateLocation callback method
+     * @param location Location returned from UpdateLocation
+     */
     @Override
     public void callback(Location location){
         homeLocation = location;
@@ -159,8 +111,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public void onBackPressed(){
 
         Log.d("backpressed",String.valueOf(selectedMarker));
-
-        if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null && getSupportFragmentManager().findFragmentByTag("gauge_fragment") == null) {
+        //If FragmentFavorites or FragmentGauge isn't displayed, then close any items encroaching
+        //the map before handling onBackPressed() normally
+        if(getSupportFragmentManager().findFragmentByTag("favorite_fragment") == null &&
+                getSupportFragmentManager().findFragmentByTag("gauge_fragment") == null) {
             if (gaugeDataLayout.getVisibility() == View.VISIBLE) {
                 Log.d("backpressed7,",String.valueOf(selectedMarker));
                 gaugeDataLayout.setVisibility(View.GONE);
@@ -188,24 +142,20 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     loadGaugeFragment.setArguments(bundle);
                     fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                     fragmentTransaction.commit();
-
                 }else{
                     Log.d("backpressed3",String.valueOf(selectedMarker));
                     resetSelectedMarker(mContext);
                     selectedMarker = null;
                     super.onBackPressed();
-
-
                 }
             } else {
                 Log.d("backpressed5,",String.valueOf(selectedMarker));
                 super.onBackPressed();
-
-
             }
         }else{
+            //check if there is a selected marker and if true, load the LoadFragmentGauge on the map
+            //view before removing the other fragments using normal onBackPressed() functionality
             if(selectedMarker !=null) {
-
                 Log.d("backpressed8,",String.valueOf(selectedMarker));
                 Bundle bundle = new Bundle();
                 bundle.putSerializable("gauge", (Gauge)selectedMarker.getTag());
@@ -216,7 +166,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 fragmentTransaction.replace(R.id.gauge_data_layout, loadGaugeFragment, "load_gauge_fragment");
                 fragmentTransaction.commit();
                 super.onBackPressed();
-
             }else {
                 super.onBackPressed();
             }
@@ -229,6 +178,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     public void onResume(){
         super.onResume();
 
+        //Reload the LoadGagueFragment on resume
         Log.d("onResumeMain","onResume");
         if(selectedMarker != null){
             Gauge gauge = (Gauge)selectedMarker.getTag();
@@ -263,29 +213,24 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
         mContext = this;
         locCallback = this;
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(MainFragActivity.this);
+        FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(MainFragActivity.this);
         LocationUpdate locationUpdate = new LocationUpdate(mContext, locCallback);
         locationUpdate.getLocation();
         homeLocation = getLastKnownLocation(this,mFusedLocationClient);
-
         LinearLayout mainLayout = (LinearLayout)findViewById(R.id.main_layout);
         mainLayout.requestFocus();
         String s = getIntent().getStringExtra("notification");
         Log.d("intent41",String.valueOf(s));
         if(getIntent().getStringExtra("notification") !=null){
-
             Log.d("intent40","from notification");
-
         }
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         sPref = sharedPrefs.getString("listPref", ANY);
         Log.d("shared",sPref);
         updateConnectedFlags();
-
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         String syncConnPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "");
         Log.d("settings",String.valueOf(syncConnPref));
-
         invisibleLayout = (RelativeLayout) findViewById(R.id.invisible_layout);
         invisibleLayout.setVisibility(View.GONE);
         gaugeDataLayout = (LinearLayout) findViewById(R.id.gauge_data_layout);
@@ -352,9 +297,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         floatingActionButtonLocation.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                updateLocation(mContext,mFusedLocationClient);
-
+                updateLocation(mContext);
                 clearViews(mContext,searchView,gaugeDataLayout);
             }
         });
@@ -375,7 +318,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             public void onClick(View view) {
                 Log.d("searchClose","clicked");
                 clearViews(mContext,searchView,gaugeDataLayout);
-
             }
         });
         searchSuggestions = (ListView)findViewById(R.id.search_suggestions);
@@ -403,29 +345,18 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Log.d("searchView3", "adapter empty? " + mAdapter.isEmpty());
         GaugeApplication.myDBHelper.clearMarkers();
         mFragmentManager = getSupportFragmentManager();
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
         UpdateDBParams updateDBParams = new UpdateDBParams(this, false);
         UpdateDataBaseTask task = new UpdateDataBaseTask();
         task.execute(updateDBParams);
-
-
     }
-
 
     @Override
     protected void onNewIntent(Intent intent){
         setIntent(intent);
         Log.d("intent5","on click");
         Log.d("intent6", String.valueOf(getIntent().getAction()));
-
         handleIntent(intent);
     }
-
-
-
-
-
 
     /**
      * Method used to check status of the internet connection
@@ -486,11 +417,9 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 String dataString = intent.getStringExtra("DATA");
                 if (dataString != null) {
                     Log.d("intent20", dataString);
-
                     MoveLocationParams params = new MoveLocationParams(this,dataString,null,gaugeDataLayout,getSupportFragmentManager());
                     MoveToLocation task = new MoveToLocation();
                     task.execute(params);
-
                 }
             }
         }
@@ -506,7 +435,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         fragmentTransaction.add(R.id.main_layout, fragmentFavorites, "favorite_fragment").addToBackStack("Tag");
         fragmentTransaction.commitAllowingStateLoss();
     }
-
 
     /**
      * Receives a user inputted String, passes it through a Geocoder, and moves the camera to that
@@ -534,8 +462,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Log.d("searchAddress4",address.getLocality() + ", " + address.getAdminArea() + ", " + address.getCountryCode() + "   " + addressList.size());
                 i++;
             }
-
-
             Log.d("searchAddress5",String.valueOf(address.getCountryCode().equals("US")));
 
             if(address.getCountryCode().equals("US")){
@@ -670,30 +596,22 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                Log.d("mapPosition1", "camera position: " + String.valueOf(mMap.getCameraPosition()));
             }
         });
-
         mMap.setOnCameraIdleListener(new GoogleMap.OnCameraIdleListener() {
             @Override
             public void onCameraIdle() {
                 Log.d("mapPosition2", "camera position: " + String.valueOf(mMap.getCameraPosition()));
                 Log.d("mapPosition8", "myList size: " + myGaugeList.size());
                 markerLoader();
-
             }
         });
-
-
         mMap.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
             @Override
             public void onMapLoaded() {
                 titleScreen.setVisibility(View.GONE);
-
-
             }
         });
-
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myLatLng,mapZoomLevel));
         searchView.clearFocus();
-
     }
 
     /**
@@ -718,7 +636,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      */
     private Float convertZoom(Float zoom){
 
-
         if(zoom > zoomLevel[0]){
             return zoomLevel[0];
         }else if(zoom > zoomLevel[1] && zoom <= zoomLevel[0]){
@@ -731,9 +648,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         else{
             return zoomLevel[4];
         }
-
     }
-
 
     /**
      * Loads markers based on camera position and zoom level
@@ -745,7 +660,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         Location myLocation = new Location("");
         myLocation.setLatitude(mMap.getCameraPosition().target.latitude);
         myLocation.setLongitude(mMap.getCameraPosition().target.longitude);
-
         Log.d("markerStuff9","what's the distance" + previousLocation.distanceTo(myLocation) * MILE_CONVERTER);
 
         //get the zoom of the camera and assign a zoom level based on it
@@ -756,8 +670,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         GetLocations gl = new GetLocations(myLocation, allGauges);
         List[] gaugeListArray = gl.getClosestGaugesArray();
         previousLocation = myLocation;
-
-
 
         //check if the zoom level has changed when the camera position moved
         //if the zoom level didn't change, just add more markers
@@ -937,7 +849,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         int leftPadding = width / 20;
         Log.d("compass","Screen height: " + height +"; top padding: " + topPadding);
         mMap.setPadding(leftPadding,topPadding,0,0);
-
     }
 
 
@@ -952,7 +863,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
         List<Marker> nMarkerList = new ArrayList<Marker>();
         Log.d("markersAdded5","loop started");
 
-
         for(Gauge gauge : gaugeList){
             LatLng latLng = new LatLng(gauge.getGaugeLatitude(), gauge.getGaugeLongitude());
             Log.d("markersAdded6","Gauge being checked: " + gauge.getGaugeName() + " " + gauge.getGaugeID());
@@ -964,12 +874,10 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     Marker marker;
                     if(((Gauge)selectedMarker.getTag()).getGaugeID().equals(gauge.getGaugeID())){
                         marker = mMap.addMarker(new MarkerOptions().position(latLng).title(gauge.getGaugeName()));
-
                     }else {
                         CustomMapMarkerIcon customMapMarkerIcon = new CustomMapMarkerIcon(mContext);
                         MarkerOptions markerOptions = customMapMarkerIcon.resizedMarkerOptions(new MarkerOptions().position(latLng).title(gauge.getGaugeName()), zoom);
                         marker = mMap.addMarker(markerOptions);
-
                     }
                     marker.setTag(gauge);
                     markerList.add(marker);
@@ -990,9 +898,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     markerList.add(marker);
                     nMarkerList.add(marker);
                 }
-
             }
-
         }
         //insert the markers that were added to the map into the database
         addMarkersToDB(nMarkerList);
@@ -1013,8 +919,8 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     /**
      * This method uses a DatabaseHelper to search the database for markers that already exist
      * in the database using a unique identifier (Gauge.getGaugeID())
-     * @param identifier
-     * @return
+     * @param identifier Unique String id used by the Database to find the marker
+     * @return True if the marker exists in the Database
      */
     private boolean checkMarkers(String identifier){
 
@@ -1047,7 +953,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
      * This method is called when a marker is clicked. If the marker clicked has a Gauge as a tag
      * then it is set as the selected marker and the LoadGaugeFragment task is executed
      * @param marker The marker that has been clicked
-     * @return True: handled by onClick, False: camera centers the marker (default behavior)
+     * @return Handled by onClick when set to true, Camera centers the marker (default behavior) when false
      */
     @Override
     public boolean onMarkerClick(final Marker marker){
@@ -1080,10 +986,7 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             Log.d("markerClick","gauge clicked on home");
             return true;
         }
-
-
     }
-
 
     /**
      * AsyncTask that gets the initial gauges that surround the home location
@@ -1118,8 +1021,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment)mFragmentManager.findFragmentById(R.id.map);
             mapFragment.getMapAsync((OnMapReadyCallback) context);
-
-
         }
 
         /**
@@ -1300,9 +1201,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             }else {
                 dbEmpty = true;
             }
-
-
-
             Context context = params[0].context;
             return new UpdateDBParams(context,dbEmpty);
         }
@@ -1342,8 +1240,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                 Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
                 toast.show();
             }
-
-
             GetGauges task = new GetGauges();
             task.execute(context);
         }
@@ -1398,7 +1294,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             return xmlVersion;
         }
 
-
         /**
          *Downloads the source data from MY_URL and sends it to WeatherXmlParser for parsing
          * @return Returns a List of Gauges that has been parsed from the XML source data
@@ -1412,7 +1307,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
             // Instantiate the parser
             WeatherXmlParser weatherXmlParser = new WeatherXmlParser();
             List<Gauge> gaugeList;
-
             try {
                 stream = downloadUrl(MY_URL);
                 gaugeList = weatherXmlParser.parse(stream);
@@ -1422,8 +1316,6 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
                     stream.close();
                 }
             }
-
-
             Log.d("downloadXML2","Finish, gauge list size: " + gaugeList.size());
             return gaugeList;
         }
@@ -1556,45 +1448,15 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
     }
 
     /**
-     * Method used to start the process of updating the location by defining the LocationCallback
-     * When LocationCallback mLocationCallback is called from startLocationUpdates(),
-     * static Location updatedLocation gets updated with the most recent location obtained
-     * After defining LocationCallback, startLocationUpdates() is called.
-     * Camera is moved to LastKnownLocation while location updates are being received.
+     * This method is used to update the location by calling the LocationUpdate class.
+     * LocationUpdate.getLocation() returns the device's current location to the callback method.
+     * getLocation() returns the last known location. The last known location should be returned
+     * before the callback method is updated. For this reason, the basic behavior of updateLocation()
+     * is to move the camera to the last known position and then update the last known position to
+     * the device's current position
      * @param context Activity Context that must be passed to startLocationUpdates()
-     * @param mFusedLocationProviderClient FusedLocationProviderClient that must be passed to
-     *                                     startLocationUpdates()
      */
-    private static void updateLocation(Context context, final FusedLocationProviderClient mFusedLocationProviderClient) {
-
-        /*mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                Log.d("getLocationUpdateAsync5","in onLocationResult");
-                if (locationResult == null) {
-                    Log.d("getLocationUpdateAsync3","location result is null");
-                    return;
-                }else{
-                    Log.d("getLocationUpdateAsync4","location result is not null");
-                }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-
-                    Log.d("getLocationUpdateAsync",location.getLatitude() + ", " + location.getLongitude());
-                    updatedLocation = location;
-                    stopLocationUpdates(mFusedLocationProviderClient);
-                }
-            }
-        };
-
-        startLocationUpdates(context,mFusedLocationProviderClient);
-        getLastKnownLocation(context,mFusedLocationProviderClient);
-
-        Location location = homeLocation;
-        myLatLng = new LatLng(homeLocation.getLatitude(),homeLocation.getLongitude());
-        LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-        moveCamera(context,latLng,latLng,CLOSEST_ZOOM);*/
+    private static void updateLocation(Context context) {
 
         LocationUpdate locationUpdate = new LocationUpdate(context,locCallback);
         Location location = locationUpdate.getLocation();
