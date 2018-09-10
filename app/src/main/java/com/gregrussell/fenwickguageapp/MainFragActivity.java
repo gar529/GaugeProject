@@ -397,14 +397,15 @@ public class MainFragActivity extends FragmentActivity implements OnMapReadyCall
 
             //if a FavoriteFragment is already in place, remove it and add a new one
             if(fragmentManager.findFragmentByTag("favorite_fragment") != null ){
-                fragmentManager.beginTransaction().remove(fragmentManager.findFragmentByTag("favorite_fragment")).commit();
-                fragmentManager.popBackStack();
-
-                addFragmentFavorites();
-
-            }else {
-                addFragmentFavorites();
+                fragmentManager.beginTransaction().remove(fragmentManager.findFragmentByTag("favorite_fragment")).commitAllowingStateLoss();
+                //fragmentManager.popBackStack();
             }
+            if(fragmentManager.findFragmentByTag("gauge_fragment") != null ){
+                fragmentManager.beginTransaction().remove(fragmentManager.findFragmentByTag("gauge_fragment")).commitAllowingStateLoss();
+                //fragmentManager.popBackStack();
+            }
+            addFragmentFavorites();
+
 
         }else {
             if (Intent.ACTION_SEARCH.equals(intent.getAction())) {

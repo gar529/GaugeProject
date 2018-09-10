@@ -42,18 +42,27 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
 
+/**
+ * The AlarmReceiver class is used to trigger notification updates. Updates are triggered by an
+ * AlarmManager approximately every 15 minutes. During each update, the class checks for any
+ * gauges that have notifications enabled and checks their stage from their NWS AHPS RSS feed.
+ * If flood stage has been reached for one or more gauges, a notification is displayed on the device.
+ * The AlarmReceiver class is also used as an opportunity update the device's location
+ */
 public class AlarmReceiver extends BroadcastReceiver {
 
     Context mContext;
-    static LocationCallback mLocationCallback;
     static PendingResult pendingResult;
-    private static String units;
 
+    /**
+     * Code that runs when the BroadcastReceiver is receiving an Intent broadcast
+     * @param context The context in which the receiver is running
+     * @param intent The intent being received
+     */
     @Override
     public void onReceive(Context context, Intent intent) {
 
         mContext = context;
-        units = mContext.getResources().getString(R.string.feet_unit);
         Log.i("receivedBroadcast","broadcast received");
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent myIntent = new Intent(context, AlarmReceiver.class);
@@ -86,10 +95,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         task.execute(mContext);
     }
 
-
-
-
-
     /**
      * Class that holds objects needed for BackgroundTask
      */
@@ -109,6 +114,10 @@ public class AlarmReceiver extends BroadcastReceiver {
     }
 
 
+    /**
+     * BackgroundTask runs on a background thread to check flood stages and display notifications if
+     * necessary
+     */
     private static class BackgroundTask extends AsyncTask<Context,Void,BackgroundTaskParam> {
 
         @Override
@@ -180,8 +189,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         private void singleGaugeNotification(Context mContext,FloodedGauge floodedGauge){
-
-
 
             Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             CharSequence title;
@@ -328,10 +335,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         private int getFloodWarning(Sigstages sigstages, String waterHeight){
 
-            double actionDouble = 0.0;
-            double minorDouble = 0.0;
-            double majorDouble = 0.0;
-            double moderateDouble = 0.0;
+            double actionDouble;
+            double minorDouble;
+            double majorDouble;
+            double moderateDouble;
             double waterDouble = 0.0;
 
             if(sigstages == null){
@@ -408,12 +415,6 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         }
 
-        private GaugeReadParseObject getGaugeReading(String gaugeID){
-
-            GaugeData gaugeData = new GaugeData(gaugeID);
-            return gaugeData.getData();
-        }
-
         private RSSParsedObj getRssReading(String gaugeID){
 
             GaugeData gaugeData = new GaugeData(gaugeID);
@@ -421,6 +422,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
     }
+
+    /**
+     * FloodedGauge object class. Holds the data needed to d
+     */
     private static class FloodedGauge{
         String name,stage,time;
         int status;
