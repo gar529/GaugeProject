@@ -28,6 +28,7 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
 import java.text.DateFormat;
@@ -37,32 +38,41 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
 
+/**
+ * The AlarmReceiver class is used to trigger notification updates. Updates are triggered by an
+ * AlarmManager approximately every 15 minutes. During each update, the class checks for any
+ * gauges that have notifications enabled and checks their stage from their NWS AHPS RSS feed.
+ * If flood stage has been reached for one or more gauges, a notification is displayed on the device.
+ * The AlarmReceiver class is also used as an opportunity update the device's location
+ */
 public class AlarmReceiver extends BroadcastReceiver {
 
-    static Context mContext;
-    static LocationCallback mLocationCallback;
+    Context mContext;
     static PendingResult pendingResult;
-    private static String units;
 
+    /**
+     * Code that runs when the BroadcastReceiver is receiving an Intent broadcast
+     * @param context The context in which the receiver is running
+     * @param intent The intent being received
+     */
     @Override
     public void onReceive(Context context, Intent intent) {
 
         mContext = context;
-        units = mContext.getResources().getString(R.string.feet_unit);
         Log.i("receivedBroadcast","broadcast received");
-
-
-
-
-
         AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent myIntent = new Intent(context, AlarmReceiver.class);
         PendingIntent alarmIntent = PendingIntent.getBroadcast(context, 0, myIntent, 0);
         myIntent.setAction("com.gregrussell.alarmtest.SEND_BROADCAST");
 
+        //different behavior for different SDKs. >= 23 AlarmManager.set() does not run while idle,
+        //must use AlarmManager.setAndAllowWhileIdle
+        //KitKat to 23, AlarmManager.set() default behavior is to run while idle
+        //Before KitKat, AlarmManager.set() does not automatically randomize the intervals
         if(Build.VERSION.SDK_INT >= 23) {
             alarmMgr.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + GaugeApplication.FIFTEEN_MINUTES_MILLIS, alarmIntent);
         }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
@@ -72,101 +82,50 @@ public class AlarmReceiver extends BroadcastReceiver {
             int randomTimeMillis = random.nextInt(GaugeApplication.UPPER_BOUND_MILLIS - GaugeApplication.LOWER_BOUND_MILLIS) + GaugeApplication.LOWER_BOUND_MILLIS;
             alarmMgr.set(AlarmManager.ELAPSED_REALTIME,SystemClock.elapsedRealtime() + randomTimeMillis,alarmIntent);
         }
-
         pendingResult = goAsync();
-        updateLocation();
-        BackgroundTask task = new BackgroundTask();
-        task.execute();
-
-
-
-    }
-
-    /**
-     * Updates the device's current location
-     * Stops requesting updates once a location is determined
-     */
-    private void updateLocation(){
-
-        final FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mContext);
-        LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(5000);
-        mLocationCallback = new LocationCallback() {
+        LocationUpdate locationUpdate = new LocationUpdate(context, new LocCallback() {
             @Override
-            public void onLocationResult(LocationResult locationResult) {
-                Log.i("getLocationUpdate5","in onLocationResult");
-                if (locationResult == null) {
-                    Log.d("getLocationUpdate3","location result is null");
-                    return;
-                }else{
-                    Log.i("getLocationUpdate4","location result is not null");
-                }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-                    Log.i("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                    if(location!=null) {
-                        Log.i("getLocationUpdate",location.getLatitude() + ", " + location.getLongitude());
-                        stopLocationUpdates(mFusedLocationClient);
-                    }
-                }
-            };
-        };
-        startLocationUpdates(mContext,mFusedLocationClient, mLocationRequest,mLocationCallback);
-
-
+            public void callback(Location location) {
+                //just need to update and store the lastKnownLocation, so don't need to handle it
+                //when it is received
+            }
+        });
+        locationUpdate.getCurrentLocation();
+        BackgroundTask task = new BackgroundTask();
+        task.execute(mContext);
     }
 
     /**
-     * Checks if location updates are permitted, then requests location updates in the interval
-     * defined by mLocationRequest
-     * @param context Activity context
-     * @param mFusedLocationClient FusedLocationProviderClient used to initiate location requests
+     * Class that holds objects needed for BackgroundTask
      */
-    private static void startLocationUpdates(Context context,
-                                             FusedLocationProviderClient mFusedLocationClient,
-                                             LocationRequest mLocationRequest,
-                                             LocationCallback mLocationCallback) {
+    private static class BackgroundTaskParam{
+        Context mContext;
+        List<FloodedGauge> floodedGauges;
 
-        Log.i("getLocationUpdate","startLocation");
-        if(ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                    mLocationCallback,
-                    null /* Looper */);
-            Log.i("getLocationUpdate2","getting location");
+        /**
+         * Class used for creating a BackgroundTaskParam
+         * @param mContext Activity context
+         * @param floodedGauges List of FloodedGauges
+         */
+        private BackgroundTaskParam(Context mContext, List<FloodedGauge>floodedGauges){
+            this.mContext = mContext;
+            this.floodedGauges = floodedGauges;
         }
     }
 
+
     /**
-     * Stops the receiving of location updates
-     * @param mFusedLocationClient FusedLocationProviderClient initiates stoppage of location updates
+     * BackgroundTask runs on a background thread to check flood stages and display notifications if
+     * necessary
      */
-    private static void stopLocationUpdates(FusedLocationProviderClient mFusedLocationClient) {
-        Log.i("getLocationUpdate6","location updates stopped");
-        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-    }
-
-
-    private static class BackgroundTask extends AsyncTask<Void,Void,List<FloodedGauge>> {
+    private static class BackgroundTask extends AsyncTask<Context,Void,BackgroundTaskParam> {
 
         @Override
-        protected List<FloodedGauge> doInBackground(Void... params){
+        protected BackgroundTaskParam doInBackground(Context... params){
 
             Log.i("receivedBroadcast","async task running");
+            Context mContext = params[0];
             List<Gauge> faveGaugeList = getAllFavorites();
-            /*List<GaugeReadParseObject> gaugeReadParseObjectList = new ArrayList<GaugeReadParseObject>();
-            if(faveGaugeList != null && faveGaugeList.size() > 0){
-                for(int i = 0; i < faveGaugeList.size();i++) {
-                    gaugeReadParseObjectList.add(getGaugeReading(faveGaugeList.get(i).getGaugeID()));
-                }
-            }
-
-            if(gaugeReadParseObjectList !=null && gaugeReadParseObjectList.size() > 0){
-                pendingResult.finish();
-                return floodedGauges(gaugeReadParseObjectList,faveGaugeList);
-            }*/
-
             List<RSSParsedObj> rssParsedObjList = new ArrayList<>();
 
             if(faveGaugeList != null && !faveGaugeList.isEmpty()) {
@@ -177,7 +136,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
             if(!rssParsedObjList.isEmpty()){
                 pendingResult.finish();
-                return floodedGauges(rssParsedObjList,faveGaugeList);
+                return new BackgroundTaskParam(mContext,floodedGauges(mContext,rssParsedObjList,faveGaugeList));
             }
 
 
@@ -186,31 +145,35 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         @Override
-        protected void onPostExecute(List<FloodedGauge> result){
+        protected void onPostExecute(BackgroundTaskParam result){
 
-            if(result != null && result.size() > 0) {
+            List<FloodedGauge> list = result.floodedGauges;
+            Context mContext = result.mContext;
 
-                if(result.size() == 1){
+            if(list != null && list.size() > 0) {
 
-                    singleGaugeNotification(result.get(0));
+                if(list.size() == 1){
+
+                    singleGaugeNotification(mContext,list.get(0));
                 }else{
-                    multiGaugeNotification();
+                    multiGaugeNotification(mContext);
                 }
-
-
             }
-            stopLocationUpdates(LocationServices.getFusedLocationProviderClient(mContext));
             Log.i("receivedBroadcast", "async finished");
 
 
 
         }
 
-        private void multiGaugeNotification(){
+        private void multiGaugeNotification(Context mContext){
 
             Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             CharSequence title = mContext.getResources().getString(R.string.flood_warning);
             CharSequence text = mContext.getResources().getString(R.string.multi_flood_warning);
+            Intent intent = new Intent(mContext, MainFragActivity.class);
+            intent.putExtra("notification","notification");
+            PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
             NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mContext, GaugeApplication.CHANNEL_ID)
                     .setContentTitle(title)
                     .setContentText(text)
@@ -219,14 +182,13 @@ public class AlarmReceiver extends BroadcastReceiver {
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setAutoCancel(true)
                     .setSound(soundUri)
+                    .setContentIntent(pendingIntent)
                     .setVibrate(new long[]{1000, 1000, 1000});
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
             notificationManager.notify(0, mBuilder.build());
         }
 
-        private void singleGaugeNotification(FloodedGauge floodedGauge){
-
-
+        private void singleGaugeNotification(Context mContext,FloodedGauge floodedGauge){
 
             Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             CharSequence title;
@@ -277,35 +239,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         }
 
-        /*private List<FloodedGauge> floodedGauges(List<GaugeReadParseObject> list, List<Gauge> faveGaugeList){
-
-            List<FloodedGauge> floodList = new ArrayList<FloodedGauge>();
-
-            Log.d("floodedGauge","grpo list size:" + list.size() + " |  fave list size" + faveGaugeList.size());
-            for(int i =0; i< list.size();i++){
-
-                String primary = "";
-                if(list.get(i).getDatumList() != null) {
-                    if (list.get(i).getDatumList().size() > 0) {
-                        primary = list.get(i).getDatumList().get(0).getPrimary();
-                    }
-                }
-                int floodWarning = getFloodWarning(list.get(i).getSigstages(),primary);
-                if(floodWarning > 0){
-
-                   FloodedGauge floodedGauge = new FloodedGauge(faveGaugeList.get(i).getGaugeName(),
-                           list.get(i).getDatumList().get(0).getPrimary() + units,convertToDate(list.get(i).getDatumList().get(0).getValid()),
-                           floodWarning);
-                   floodList.add(floodedGauge);
-
-                }
-
-            }
-            return floodList;
-
-        }*/
-
-        private List<FloodedGauge> floodedGauges(List<RSSParsedObj> list, List<Gauge> faveGaugeList){
+        private List<FloodedGauge> floodedGauges(Context mContext,List<RSSParsedObj> list, List<Gauge> faveGaugeList){
 
             List<FloodedGauge> floodList = new ArrayList<FloodedGauge>();
 
@@ -323,18 +257,17 @@ public class AlarmReceiver extends BroadcastReceiver {
                 int floodWarning = getFloodWarning(sigstages,stage);
                 if(floodWarning > -1){
                     FloodedGauge floodedGauge = new FloodedGauge(faveGaugeList.get(i).getGaugeName(),
-                            addUnits(rssParsedObj.getStage()),convertToDate(rssParsedObj.getTime()),floodWarning);
+                            addUnits(mContext,rssParsedObj.getStage()),convertToDate(rssParsedObj.getTime()),floodWarning);
                     floodList.add(floodedGauge);
                 }
 
             }
 
-
             return floodList;
 
         }
 
-        private String addUnits(String waterHeight){
+        private String addUnits(Context mContext,String waterHeight){
 
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(mContext);
             String unitsPref = sharedPref.getString(SettingsFragment.KEY_PREF_UNITS, "0");
@@ -357,56 +290,21 @@ public class AlarmReceiver extends BroadcastReceiver {
         private String convertToFeet(Context mContext, String waterHeight){
 
             double feetDouble = Double.parseDouble(waterHeight);
-            return String.format("%.2f",feetDouble) + mContext.getResources().getString(R.string.feet_unit);
+            return String.format(Locale.getDefault(),"%.2f",feetDouble) + mContext.getResources().getString(R.string.feet_unit);
         }
 
         private String convertToMeters(Context mContext, String waterHeight){
 
             double meterConverter = .3048;
             double meterDouble = Double.parseDouble(waterHeight) * meterConverter;
-            String meterString = String.valueOf(meterDouble);
-            return String.format("%.2f",meterDouble) + mContext.getResources().getString(R.string.meter_unit);
+            return String.format(Locale.getDefault(),"%.2f",meterDouble) +
+                    mContext.getResources().getString(R.string.meter_unit);
 
 
 
         }
 
-        /*private String convertToDate(String valid){
 
-            if(valid.equals("")){
-                return "";
-            }
-            String dateString = valid;
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm");
-            Date convertedDate = new Date();
-            try {
-                convertedDate = dateFormat.parse(dateString);
-
-
-            } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch (NullPointerException e){
-                e.printStackTrace();
-            }
-            Date date = Calendar.getInstance().getTime();
-            DateFormat formatter = new SimpleDateFormat("h:mmaa");
-            TimeZone tz = TimeZone.getDefault();
-            Date now = new Date();
-            int offsetFromUtc = tz.getOffset(now.getTime());
-            Log.d("xmlData", "timezone offset is: " + offsetFromUtc);
-
-            Log.d("xmlData", "date is: " + date.getTime());
-            long offset = convertedDate.getTime() + offsetFromUtc;
-            Log.d("xmlData", "date with offset is: " + offset);
-            Date correctTZDate = new Date(offset);
-
-
-            Log.d("xmlData", "correctTZDate is: " + correctTZDate.getTime());
-            return formatter.format(correctTZDate);
-
-
-        }*/
 
 
         private String convertToDate(String dateString){
@@ -428,9 +326,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             Date now = new Date();
             int offsetFromUtc = tz.getOffset(now.getTime());
 
-            long offset = convertedDate.getTime() + offsetFromUtc;
 
-            Date correctTZDate = new Date(offset);
 
             return myFormat.format(convertedDate);
 
@@ -439,10 +335,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         private int getFloodWarning(Sigstages sigstages, String waterHeight){
 
-            double actionDouble = 0.0;
-            double minorDouble = 0.0;
-            double majorDouble = 0.0;
-            double moderateDouble = 0.0;
+            double actionDouble;
+            double minorDouble;
+            double majorDouble;
+            double moderateDouble;
             double waterDouble = 0.0;
 
             if(sigstages == null){
@@ -508,8 +404,6 @@ public class AlarmReceiver extends BroadcastReceiver {
                     }
 
                 }
-
-
             }
             return -1;
 
@@ -521,21 +415,17 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         }
 
-        private GaugeReadParseObject getGaugeReading(String gaugeID){
-
-            GaugeData gaugeData = new GaugeData(gaugeID);
-            return gaugeData.getData();
-        }
-
         private RSSParsedObj getRssReading(String gaugeID){
 
             GaugeData gaugeData = new GaugeData(gaugeID);
             return gaugeData.getRssData();
         }
 
-
-
     }
+
+    /**
+     * FloodedGauge object class. Holds the data needed to d
+     */
     private static class FloodedGauge{
         String name,stage,time;
         int status;
@@ -546,6 +436,5 @@ public class AlarmReceiver extends BroadcastReceiver {
             this.status = status;
         }
     }
-
 
 }

@@ -24,7 +24,7 @@
             android:shape = "oval">
             <size
                 android:width="50dp"
-                android:height="65dp"/>
+                android:height="70dp"/>
             <solid android:color="#358FEA"/>
         </shape>
     </item>

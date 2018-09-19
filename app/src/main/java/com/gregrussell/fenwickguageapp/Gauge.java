@@ -1,5 +1,7 @@
 package com.gregrussell.fenwickguageapp;
 
+import android.util.Log;
+
 import java.io.Serializable;
 
 public class Gauge implements Serializable {
@@ -10,6 +12,10 @@ public class Gauge implements Serializable {
     private double gaugeLongitude;
     private String gaugeAddress;
     private double distance;
+
+    public Gauge(){
+
+    }
 
     public Gauge(String gaugeURL, String gaugeName, String gaugeID, double gaugeLatitude,
                  double gaugeLongitude, String gaugeAddress){

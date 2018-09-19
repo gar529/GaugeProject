@@ -36,6 +36,7 @@
                     android:background="?android:attr/selectableItemBackgroundBorderless"/>
 
                 <TextView
+                    android:textColor="@color/light_text"
                     android:textSize="20sp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -58,10 +59,12 @@
                     android:orientation="horizontal">
 
                     <TextView
+                        android:textColor="@color/light_text"
                         android:id="@+id/load_gauge_fragment_text_water_height"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                     <TextView
+                        android:textColor="@color/light_text"
                         android:id="@+id/load_gauge_fragment_water_height"
                         android:layout_gravity="center_horizontal"
                         android:textSize="40sp"
@@ -76,10 +79,12 @@
                     android:orientation="horizontal">
 
                     <TextView
+                        android:textColor="@color/light_text"
                         android:id="@+id/load_gauge_fragment_text_time"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                     <TextView
+                        android:textColor="@color/light_text"
                         android:layout_gravity="center_horizontal"
                         android:textSize="16sp"
                         android:id="@+id/load_gauge_fragment_reading_time"
