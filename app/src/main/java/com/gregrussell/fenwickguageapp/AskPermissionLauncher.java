@@ -76,16 +76,19 @@ public class AskPermissionLauncher extends Activity {
                 }
             } else {
 
+                Log.d("launcher1","start main frag activity");
                 Intent intent = new Intent(this,MainFragActivity.class);
                 startActivity(intent);
                 finish();
 
             }
-        }
+        }else {
 
-        Intent intent = new Intent(this,MainFragActivity.class);
-        startActivity(intent);
-        finish();
+            Log.d("launcher2", "start main frag activity");
+            Intent intent = new Intent(this, MainFragActivity.class);
+            startActivity(intent);
+            finish();
+        }
 
 
 
@@ -128,6 +131,7 @@ public class AskPermissionLauncher extends Activity {
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
                     Log.d("AskPermission14","---");
+                    Log.d("launcher4","start main frag activity");
                     Intent intent = new Intent(this,MainFragActivity.class);
                     startActivity(intent);
                     finish();
@@ -178,6 +182,7 @@ public class AskPermissionLauncher extends Activity {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             Intent intent = new Intent(mContext,MainFragActivity.class);
+                            Log.d("launcher3","start main frag activity");
                             startActivity(intent);
                             getActivity().finish();
                         }
